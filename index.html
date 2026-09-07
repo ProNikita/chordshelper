@@ -116,14 +116,21 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2 data-i18n="melodyTitle">Melody generator</h2>
-          <span class="prog-label" data-i18n="melodySub">an idea to sing or play over this progression</span>
+          <h2 data-i18n="melodyTitle">Melody &amp; bass generator</h2>
+          <span class="prog-label" data-i18n="melodySub">ideas to sing or play over this progression</span>
         </div>
         <div class="play-bar melody-bar">
           <button id="genMelodyBtn" class="btn primary" data-i18n="generateMelody">🎲 Generate melody</button>
-          <button id="melodyPlayBtn" class="btn play-btn" data-i18n="play" disabled>▶ Play</button>
-          <button id="melodyWithChordsBtn" class="btn play-btn" data-i18n="playWithChords" disabled>▶ Play with chords</button>
+          <button id="genBassBtn" class="btn primary" data-i18n="generateBass">🎸 Generate bass</button>
+          <button id="melodyPlayBtn" class="btn play-btn" data-i18n="playMelody" disabled>▶ Play melody</button>
+          <button id="bassPlayBtn" class="btn play-btn" data-i18n="playBass" disabled>▶ Play bass</button>
+          <button id="playAllBtn" class="btn play-btn" data-i18n="playAll" disabled>▶ Play all</button>
           <button id="downloadMidiBtn" class="btn" data-i18n="downloadMidi" disabled>⬇ Download MIDI</button>
+        </div>
+        <div class="tier-legend">
+          <span class="tier-item"><span class="tier-dot root"></span><span data-i18n="legendRoot">Root</span></span>
+          <span class="tier-item"><span class="tier-dot chord"></span><span data-i18n="legendMelody">Melody</span></span>
+          <span class="tier-item"><span class="tier-dot bass"></span><span data-i18n="legendBass">Bass</span></span>
         </div>
         <div id="melodyContainer" class="melody-container"></div>
       </section>

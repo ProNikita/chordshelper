@@ -8,6 +8,7 @@
   --accent: #6ee7c2;
   --accent-2: #7aa2f7;
   --root-color: #ff9f6e;
+  --bass-color: #c792ea;
   --danger: #ef7b7b;
   --radius: 10px;
 }
@@ -400,6 +401,7 @@ select {
 .tier-dot.root { background: var(--root-color); }
 .tier-dot.chord { background: var(--accent); }
 .tier-dot.scale { background: var(--accent-2); }
+.tier-dot.bass { background: var(--bass-color); }
 
 .fretboard-container {
   overflow-x: auto;

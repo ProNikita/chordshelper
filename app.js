@@ -37,12 +37,17 @@ const STRINGS = {
     legendRoot: 'Root',
     legendChord: 'Chord tone',
     legendScale: 'Safe note',
-    melodyTitle: 'Melody generator',
-    melodySub: 'an idea to sing or play over this progression',
+    melodyTitle: 'Melody & bass generator',
+    melodySub: 'ideas to sing or play over this progression',
     generateMelody: '🎲 Generate melody',
-    playWithChords: '▶ Play with chords',
+    generateBass: '🎸 Generate bass',
+    playMelody: '▶ Play melody',
+    playBass: '▶ Play bass',
+    playAll: '▶ Play all',
     downloadMidi: '⬇ Download MIDI',
-    melodyPlaceholder: 'Click "Generate melody" to create a melody line that fits this progression.',
+    melodyPlaceholder: 'Click "Generate melody" or "Generate bass" to create lines that fit this progression.',
+    legendMelody: 'Melody',
+    legendBass: 'Bass',
     noCapo: 'No capo',
     fretN: n => `Fret ${n}`,
     capoWord: 'capo',
@@ -113,12 +118,17 @@ const STRINGS = {
     legendRoot: 'Тоника',
     legendChord: 'Тон аккорда',
     legendScale: 'Безопасная нота',
-    melodyTitle: 'Генератор мелодии',
-    melodySub: 'идея для пения или соло поверх этой прогрессии',
+    melodyTitle: 'Генератор мелодии и баса',
+    melodySub: 'идеи для пения или соло поверх этой прогрессии',
     generateMelody: '🎲 Сгенерировать мелодию',
-    playWithChords: '▶ Играть с аккордами',
+    generateBass: '🎸 Сгенерировать бас',
+    playMelody: '▶ Играть мелодию',
+    playBass: '▶ Играть бас',
+    playAll: '▶ Играть всё',
     downloadMidi: '⬇ Скачать MIDI',
-    melodyPlaceholder: 'Нажми «Сгенерировать мелодию», чтобы создать мелодическую линию под эту прогрессию.',
+    melodyPlaceholder: 'Нажми «Сгенерировать мелодию» или «Сгенерировать бас», чтобы создать партии под эту прогрессию.',
+    legendMelody: 'Мелодия',
+    legendBass: 'Бас',
     noCapo: 'Без капо',
     fretN: n => `${n} лад`,
     capoWord: 'капо',
@@ -992,8 +1002,9 @@ function setPlayBtnState(btn, isActive, idleLabelKey) {
 
 function updateAllPlayButtonsUI() {
   setPlayBtnState(document.getElementById('playBtn'), state.activePlayer === 'progression', 'play');
-  setPlayBtnState(document.getElementById('melodyPlayBtn'), state.activePlayer === 'melody', 'play');
-  setPlayBtnState(document.getElementById('melodyWithChordsBtn'), state.activePlayer === 'melodyChords', 'playWithChords');
+  setPlayBtnState(document.getElementById('melodyPlayBtn'), state.activePlayer === 'melody', 'playMelody');
+  setPlayBtnState(document.getElementById('bassPlayBtn'), state.activePlayer === 'bass', 'playBass');
+  setPlayBtnState(document.getElementById('playAllBtn'), state.activePlayer === 'all', 'playAll');
 }
 
 function scheduleChordsPlayback(bpm) {
@@ -1008,19 +1019,27 @@ function scheduleChordsPlayback(bpm) {
   return state.progression.length * secondsPerChord;
 }
 
-function scheduleMelodyPlayback(bpm) {
+function scheduleNotesPlayback(notes, bpm, waveType, peakGain) {
   const secPerBeat = 60 / bpm;
   let maxEnd = 0;
-  state.melody.forEach(n => {
+  notes.forEach(n => {
     const endBeat = n.startBeat + n.duration;
     if (endBeat > maxEnd) maxEnd = endBeat;
     if (n.midi == null) return; // rest
     const id = setTimeout(() => {
-      playNoteAt(getAudioContext(), midiToFreq(n.midi), getAudioContext().currentTime, n.duration * secPerBeat * 0.88, 0.14, 'square');
+      playNoteAt(getAudioContext(), midiToFreq(n.midi), getAudioContext().currentTime, n.duration * secPerBeat * 0.88, peakGain, waveType);
     }, n.startBeat * secPerBeat * 1000);
     playbackTimeouts.push(id);
   });
   return maxEnd * secPerBeat;
+}
+
+function scheduleMelodyPlayback(bpm) {
+  return scheduleNotesPlayback(state.melody, bpm, 'square', 0.14);
+}
+
+function scheduleBassPlayback(bpm) {
+  return scheduleNotesPlayback(state.bass, bpm, 'sine', 0.22);
 }
 
 function togglePlayer(kind) {
@@ -1029,7 +1048,9 @@ function togglePlayer(kind) {
     return;
   }
   if (!state.progression || !state.progression.length) return;
-  if (kind !== 'progression' && !state.melody) return;
+  if (kind === 'melody' && !state.melody) return;
+  if (kind === 'bass' && !state.bass) return;
+  if (kind === 'all' && !state.melody && !state.bass) return;
   stopPlayback();
   getAudioContext();
   state.activePlayer = kind;
@@ -1041,10 +1062,13 @@ function togglePlayer(kind) {
     totalSeconds = scheduleChordsPlayback(bpm);
   } else if (kind === 'melody') {
     totalSeconds = scheduleMelodyPlayback(bpm);
-  } else if (kind === 'melodyChords') {
-    const chordsEnd = scheduleChordsPlayback(bpm);
-    const melodyEnd = scheduleMelodyPlayback(bpm);
-    totalSeconds = Math.max(chordsEnd, melodyEnd);
+  } else if (kind === 'bass') {
+    totalSeconds = scheduleBassPlayback(bpm);
+  } else if (kind === 'all') {
+    const ends = [scheduleChordsPlayback(bpm)];
+    if (state.melody) ends.push(scheduleMelodyPlayback(bpm));
+    if (state.bass) ends.push(scheduleBassPlayback(bpm));
+    totalSeconds = Math.max(...ends);
   }
 
   const endId = setTimeout(() => {
@@ -1142,11 +1166,64 @@ function generateMelody(progression, keyRoot, mode) {
   return notes;
 }
 
-function renderMelodySVG(notes, progression, keyRoot, mode) {
+// ---------- Bass line generator ----------
+// Bass mostly anchors on the chord root (and occasionally the fifth), in a
+// register clearly below the chords and melody. A handful of preset rhythm
+// patterns (root whole-note holds, root-fifth alternation, walking) are
+// picked per bar, and the last beat can turn into a chromatic "approach"
+// note a half-step below the next bar's root — the classic way a bass line
+// leads the ear into the next chord change.
+
+const BASS_MIN = 28, BASS_MAX = 46; // E1–Bb2, a plain bass-guitar register
+
+const BASS_PATTERNS = [
+  [{ dur: 4, tone: 'root' }],
+  [{ dur: 1, tone: 'root' }, { dur: 1, tone: 'root' }, { dur: 1, tone: 'root' }, { dur: 1, tone: 'root' }],
+  [{ dur: 1, tone: 'root' }, { dur: 1, tone: 'root' }, { dur: 1, tone: 'fifth' }, { dur: 1, tone: 'root' }],
+  [{ dur: 2, tone: 'root' }, { dur: 2, tone: 'fifth' }],
+  [{ dur: 1, tone: 'root' }, { dur: 1, tone: 'fifth' }, { dur: 1, tone: 'root' }, { dur: 1, tone: 'fifth' }],
+  [{ dur: 2, tone: 'root' }, { dur: 1, tone: 'root' }, { dur: 1, tone: 'approach' }],
+  [{ dur: 1, tone: 'root' }, { dur: 1, tone: 'root' }, { dur: 1, tone: 'root' }, { dur: 1, tone: 'approach' }],
+];
+
+function generateBassLine(progression, keyRoot, mode) {
+  const notes = [];
+  let beatCursor = 0;
+  let prevMidi = nearestOctaveNote(keyRoot, 36, BASS_MIN, BASS_MAX);
+
+  progression.forEach((chord, barIdx) => {
+    const nextChord = progression[barIdx + 1];
+    const fifthIv = CHORD_INTERVALS[chord.quality][2]; // index 2 is always the 5th, triad or extended
+    const fifthPc = (chord.root + fifthIv) % 12;
+    const pattern = BASS_PATTERNS[Math.floor(Math.random() * BASS_PATTERNS.length)];
+
+    pattern.forEach(step => {
+      let midi;
+      if (step.tone === 'fifth') {
+        midi = nearestOctaveNote(fifthPc, prevMidi, BASS_MIN, BASS_MAX);
+      } else if (step.tone === 'approach' && nextChord) {
+        const approachPc = ((nextChord.root - 1) % 12 + 12) % 12; // half-step below the next root
+        midi = nearestOctaveNote(approachPc, prevMidi, BASS_MIN, BASS_MAX);
+      } else {
+        midi = nearestOctaveNote(chord.root, prevMidi, BASS_MIN, BASS_MAX);
+      }
+      notes.push({ startBeat: beatCursor, duration: step.dur, midi });
+      prevMidi = midi;
+      beatCursor += step.dur;
+    });
+  });
+
+  return notes;
+}
+
+function renderMelodyBassSVG(melodyNotes, bassNotes, progression, keyRoot, mode) {
   const keyMap = buildKeyNoteMap(keyRoot, mode);
   const beatW = 26;
-  const rowH = 8;
-  const rows = MELODY_MAX - MELODY_MIN + 2;
+  const rowH = 7;
+  const allPitches = [...melodyNotes, ...bassNotes].filter(n => n.midi != null).map(n => n.midi);
+  const pMax = allPitches.length ? Math.max(...allPitches) : MELODY_MAX;
+  const pMin = allPitches.length ? Math.min(...allPitches) : MELODY_MIN;
+  const rows = pMax - pMin + 2;
   const totalBeats = progression.length * 4;
   const left = 4, top = 22;
   const w = left + totalBeats * beatW + 4;
@@ -1162,18 +1239,22 @@ function renderMelodySVG(notes, progression, keyRoot, mode) {
   });
   svg += `<line x1="${left + totalBeats * beatW}" y1="${top}" x2="${left + totalBeats * beatW}" y2="${h - 4}" stroke="var(--border)" stroke-width="1"/>`;
 
-  notes.forEach(n => {
-    if (n.midi == null) return;
-    const x = left + n.startBeat * beatW + 1;
-    const width = n.duration * beatW - 2;
-    const y = top + (MELODY_MAX - n.midi) * rowH;
-    const isRoot = ((n.midi % 12) + 12) % 12 === keyRoot;
-    const fill = isRoot ? 'var(--root-color)' : 'var(--accent)';
-    svg += `<rect x="${x}" y="${y}" width="${Math.max(width, 3)}" height="${rowH - 2}" rx="2" fill="${fill}"/>`;
-    if (width > 14) {
-      svg += `<text x="${x + width / 2}" y="${y + rowH - 3}" font-size="6.5" text-anchor="middle" fill="#10131a" font-weight="700">${keyMap.get(((n.midi % 12) + 12) % 12) || noteName(n.midi % 12)}</text>`;
-    }
-  });
+  function drawLayer(notes, colorTone) {
+    notes.forEach(n => {
+      if (n.midi == null) return;
+      const x = left + n.startBeat * beatW + 1;
+      const width = n.duration * beatW - 2;
+      const y = top + (pMax - n.midi) * rowH;
+      const isRoot = ((n.midi % 12) + 12) % 12 === keyRoot;
+      const fill = isRoot ? 'var(--root-color)' : colorTone;
+      svg += `<rect x="${x}" y="${y}" width="${Math.max(width, 3)}" height="${rowH - 2}" rx="2" fill="${fill}"/>`;
+      if (width > 14) {
+        svg += `<text x="${x + width / 2}" y="${y + rowH - 3}" font-size="6.5" text-anchor="middle" fill="#10131a" font-weight="700">${keyMap.get(((n.midi % 12) + 12) % 12) || noteName(n.midi % 12)}</text>`;
+      }
+    });
+  }
+  drawLayer(bassNotes, 'var(--bass-color)');
+  drawLayer(melodyNotes, 'var(--accent)');
 
   svg += `</svg>`;
   return svg;
@@ -1181,23 +1262,34 @@ function renderMelodySVG(notes, progression, keyRoot, mode) {
 
 function renderMelodyPanel() {
   const container = document.getElementById('melodyContainer');
-  const playBtn = document.getElementById('melodyPlayBtn');
-  const withChordsBtn = document.getElementById('melodyWithChordsBtn');
+  const melodyPlayBtn = document.getElementById('melodyPlayBtn');
+  const bassPlayBtn = document.getElementById('bassPlayBtn');
+  const playAllBtn = document.getElementById('playAllBtn');
   const downloadBtn = document.getElementById('downloadMidiBtn');
 
-  if (!state.melody) {
+  melodyPlayBtn.disabled = !state.melody;
+  bassPlayBtn.disabled = !state.bass;
+  playAllBtn.disabled = !state.melody && !state.bass;
+  downloadBtn.disabled = !state.melody && !state.bass;
+
+  if (!state.melody && !state.bass) {
     container.innerHTML = `<p class="melody-placeholder">${t('melodyPlaceholder')}</p>`;
-    [playBtn, withChordsBtn, downloadBtn].forEach(b => b.disabled = true);
     return;
   }
-  [playBtn, withChordsBtn, downloadBtn].forEach(b => b.disabled = false);
-  container.innerHTML = `<div class="melody-roll">${renderMelodySVG(state.melody, state.progression, state.root, state.mode)}</div>`;
+  container.innerHTML = `<div class="melody-roll">${renderMelodyBassSVG(state.melody || [], state.bass || [], state.progression, state.root, state.mode)}</div>`;
 }
 
 function regenerateMelody() {
   if (!state.progression || !state.progression.length) return;
   stopPlayback();
   state.melody = generateMelody(state.progression, state.root, state.mode);
+  renderMelodyPanel();
+}
+
+function regenerateBass() {
+  if (!state.progression || !state.progression.length) return;
+  stopPlayback();
+  state.bass = generateBassLine(state.progression, state.root, state.mode);
   renderMelodyPanel();
 }
 
@@ -1218,7 +1310,11 @@ function midiVarLen(value) {
   return bytes;
 }
 
-function buildMidiFile(progression, melody, bpm) {
+// General MIDI program numbers so a DAW picks a sensible sound per channel
+// without the user having to reassign instruments by hand.
+const GM_PROGRAM = { chords: 0, melody: 80, bass: 33 }; // Acoustic Grand, Lead 1 (square), Electric Bass (finger)
+
+function buildMidiFile(progression, melody, bass, bpm) {
   const PPQ = 480;
   const barTicks = PPQ * 4;
   const events = []; // {tick, on, note, velocity, channel}
@@ -1231,7 +1327,7 @@ function buildMidiFile(progression, melody, bpm) {
     });
   });
 
-  melody.forEach(n => {
+  (melody || []).forEach(n => {
     if (n.midi == null) return;
     const startTick = Math.round(n.startBeat * PPQ);
     const endTick = startTick + Math.round(n.duration * PPQ * 0.9);
@@ -1239,11 +1335,22 @@ function buildMidiFile(progression, melody, bpm) {
     events.push({ tick: endTick, on: false, note: n.midi, velocity: 0, channel: 1 });
   });
 
+  (bass || []).forEach(n => {
+    if (n.midi == null) return;
+    const startTick = Math.round(n.startBeat * PPQ);
+    const endTick = startTick + Math.round(n.duration * PPQ * 0.92);
+    events.push({ tick: startTick, on: true, note: n.midi, velocity: 96, channel: 2 });
+    events.push({ tick: endTick, on: false, note: n.midi, velocity: 0, channel: 2 });
+  });
+
   events.sort((a, b) => a.tick - b.tick || (a.on ? 1 : -1)); // note-offs before note-ons at the same tick
 
   const track = [];
   const usPerQuarter = Math.round(60000000 / bpm);
   track.push(...midiVarLen(0), 0xff, 0x51, 0x03, (usPerQuarter >> 16) & 0xff, (usPerQuarter >> 8) & 0xff, usPerQuarter & 0xff);
+  track.push(...midiVarLen(0), 0xc0 | 0, GM_PROGRAM.chords);
+  if (melody && melody.length) track.push(...midiVarLen(0), 0xc0 | 1, GM_PROGRAM.melody);
+  if (bass && bass.length) track.push(...midiVarLen(0), 0xc0 | 2, GM_PROGRAM.bass);
 
   let lastTick = 0;
   events.forEach(e => {
@@ -1262,8 +1369,8 @@ function buildMidiFile(progression, melody, bpm) {
 }
 
 function downloadMelodyMidi() {
-  if (!state.melody || !state.progression) return;
-  const bytes = buildMidiFile(state.progression, state.melody, getBpm());
+  if (!state.progression || (!state.melody && !state.bass)) return;
+  const bytes = buildMidiFile(state.progression, state.melody, state.bass, getBpm());
   const blob = new Blob([bytes], { type: 'audio/midi' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1291,8 +1398,9 @@ const state = {
   progressionLabel: '',
   selectedChordIndex: null,
   showScale: true,
-  activePlayer: null, // null | 'progression' | 'melody' | 'melodyChords'
+  activePlayer: null, // null | 'progression' | 'melody' | 'bass' | 'all'
   melody: null,       // array of {startBeat, duration, midi} once generated
+  bass: null,         // same shape, once generated
 };
 
 function populateSelects() {
@@ -1369,6 +1477,7 @@ function setProgression(chords, label) {
   state.progressionLabel = label;
   state.selectedChordIndex = null;
   state.melody = null;
+  state.bass = null;
   renderChordCards();
   updateActiveProgItem();
   renderPiano();
@@ -1554,8 +1663,10 @@ function wireEvents() {
   document.getElementById('playBtn').addEventListener('click', () => togglePlayer('progression'));
   document.getElementById('pianoPlayBtn').addEventListener('click', playPianoPanel);
   document.getElementById('genMelodyBtn').addEventListener('click', regenerateMelody);
+  document.getElementById('genBassBtn').addEventListener('click', regenerateBass);
   document.getElementById('melodyPlayBtn').addEventListener('click', () => togglePlayer('melody'));
-  document.getElementById('melodyWithChordsBtn').addEventListener('click', () => togglePlayer('melodyChords'));
+  document.getElementById('bassPlayBtn').addEventListener('click', () => togglePlayer('bass'));
+  document.getElementById('playAllBtn').addEventListener('click', () => togglePlayer('all'));
   document.getElementById('downloadMidiBtn').addEventListener('click', downloadMelodyMidi);
   document.getElementById('randomBtn').addEventListener('click', () => {
     const chords = randomProgression(state.root, state.mode, state.mood);
