@@ -210,6 +210,9 @@ select {
 .melody-container {
   min-height: 40px;
 }
+.melody-container + .melody-container {
+  margin-top: 10px;
+}
 .melody-placeholder {
   color: var(--text-dim);
   font-size: 13.5px;
@@ -218,6 +221,23 @@ select {
 .melody-roll {
   overflow-x: auto;
   padding-bottom: 4px;
+}
+
+.gen-group {
+  display: inline-flex;
+  gap: 4px;
+}
+.remove-btn {
+  padding: 0;
+  width: 34px;
+  min-width: 34px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+.remove-btn:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
 }
 .bpm-field {
   display: flex;

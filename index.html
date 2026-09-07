@@ -116,27 +116,6 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2 data-i18n="melodyTitle">Melody &amp; bass generator</h2>
-          <span class="prog-label" data-i18n="melodySub">ideas to sing or play over this progression</span>
-        </div>
-        <div class="play-bar melody-bar">
-          <button id="genMelodyBtn" class="btn primary" data-i18n="generateMelody">🎲 Generate melody</button>
-          <button id="genBassBtn" class="btn primary" data-i18n="generateBass">🎸 Generate bass</button>
-          <button id="melodyPlayBtn" class="btn play-btn" data-i18n="playMelody" disabled>▶ Play melody</button>
-          <button id="bassPlayBtn" class="btn play-btn" data-i18n="playBass" disabled>▶ Play bass</button>
-          <button id="playAllBtn" class="btn play-btn" data-i18n="playAll" disabled>▶ Play all</button>
-          <button id="downloadMidiBtn" class="btn" data-i18n="downloadMidi" disabled>⬇ Download MIDI</button>
-        </div>
-        <div class="tier-legend">
-          <span class="tier-item"><span class="tier-dot root"></span><span data-i18n="legendRoot">Root</span></span>
-          <span class="tier-item"><span class="tier-dot chord"></span><span data-i18n="legendMelody">Melody</span></span>
-          <span class="tier-item"><span class="tier-dot bass"></span><span data-i18n="legendBass">Bass</span></span>
-        </div>
-        <div id="melodyContainer" class="melody-container"></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-header">
           <h2 data-i18n="pianoTitle">Piano</h2>
           <div class="piano-toggle">
             <button id="showScaleBtn" class="btn small active" data-i18n="showScale">Show scale</button>
@@ -163,6 +142,41 @@
         </div>
         <p id="fretboardInfo" class="piano-info"></p>
         <div id="fretboardContainer" class="fretboard-container"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2 data-i18n="melodyTitle">Melody, bass &amp; drums generator</h2>
+          <span class="prog-label" data-i18n="melodySub">ideas to sing or play over this progression</span>
+        </div>
+        <div class="play-bar melody-bar">
+          <span class="gen-group">
+            <button id="genMelodyBtn" class="btn primary" data-i18n="generateMelody">🎲 Generate melody</button>
+            <button id="removeMelodyBtn" class="btn small remove-btn" disabled>✕</button>
+          </span>
+          <span class="gen-group">
+            <button id="genBassBtn" class="btn primary" data-i18n="generateBass">🎸 Generate bass</button>
+            <button id="removeBassBtn" class="btn small remove-btn" disabled>✕</button>
+          </span>
+          <span class="gen-group">
+            <button id="genDrumsBtn" class="btn primary" data-i18n="generateDrums">🥁 Generate drums</button>
+            <button id="removeDrumsBtn" class="btn small remove-btn" disabled>✕</button>
+          </span>
+        </div>
+        <div class="play-bar melody-bar">
+          <button id="melodyPlayBtn" class="btn play-btn" data-i18n="playMelody" disabled>▶ Play melody</button>
+          <button id="bassPlayBtn" class="btn play-btn" data-i18n="playBass" disabled>▶ Play bass</button>
+          <button id="drumsPlayBtn" class="btn play-btn" data-i18n="playDrums" disabled>▶ Play drums</button>
+          <button id="playAllBtn" class="btn play-btn" data-i18n="playAll" disabled>▶ Play all</button>
+          <button id="downloadMidiBtn" class="btn" data-i18n="downloadMidi" disabled>⬇ Download MIDI</button>
+        </div>
+        <div class="tier-legend">
+          <span class="tier-item"><span class="tier-dot root"></span><span data-i18n="legendRoot">Root</span></span>
+          <span class="tier-item"><span class="tier-dot chord"></span><span data-i18n="legendMelody">Melody</span></span>
+          <span class="tier-item"><span class="tier-dot bass"></span><span data-i18n="legendBass">Bass</span></span>
+        </div>
+        <div id="melodyContainer" class="melody-container"></div>
+        <div id="drumsContainer" class="melody-container"></div>
       </section>
 
     </main>

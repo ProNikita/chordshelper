@@ -37,17 +37,22 @@ const STRINGS = {
     legendRoot: 'Root',
     legendChord: 'Chord tone',
     legendScale: 'Safe note',
-    melodyTitle: 'Melody & bass generator',
+    melodyTitle: 'Melody, bass & drums generator',
     melodySub: 'ideas to sing or play over this progression',
     generateMelody: '🎲 Generate melody',
     generateBass: '🎸 Generate bass',
+    generateDrums: '🥁 Generate drums',
     playMelody: '▶ Play melody',
     playBass: '▶ Play bass',
+    playDrums: '▶ Play drums',
     playAll: '▶ Play all',
     downloadMidi: '⬇ Download MIDI',
-    melodyPlaceholder: 'Click "Generate melody" or "Generate bass" to create lines that fit this progression.',
+    melodyPlaceholder: 'Click "Generate melody", "Generate bass", or "Generate drums" to create parts that fit this progression.',
     legendMelody: 'Melody',
     legendBass: 'Bass',
+    removeMelody: 'Remove melody',
+    removeBass: 'Remove bass',
+    removeDrums: 'Remove drums',
     noCapo: 'No capo',
     fretN: n => `Fret ${n}`,
     capoWord: 'capo',
@@ -118,17 +123,22 @@ const STRINGS = {
     legendRoot: 'Тоника',
     legendChord: 'Тон аккорда',
     legendScale: 'Безопасная нота',
-    melodyTitle: 'Генератор мелодии и баса',
+    melodyTitle: 'Генератор мелодии, баса и барабанов',
     melodySub: 'идеи для пения или соло поверх этой прогрессии',
     generateMelody: '🎲 Сгенерировать мелодию',
     generateBass: '🎸 Сгенерировать бас',
+    generateDrums: '🥁 Сгенерировать барабаны',
     playMelody: '▶ Играть мелодию',
     playBass: '▶ Играть бас',
+    playDrums: '▶ Играть барабаны',
     playAll: '▶ Играть всё',
     downloadMidi: '⬇ Скачать MIDI',
-    melodyPlaceholder: 'Нажми «Сгенерировать мелодию» или «Сгенерировать бас», чтобы создать партии под эту прогрессию.',
+    melodyPlaceholder: 'Нажми «Сгенерировать мелодию», «Сгенерировать бас» или «Сгенерировать барабаны», чтобы создать партии под эту прогрессию.',
     legendMelody: 'Мелодия',
     legendBass: 'Бас',
+    removeMelody: 'Убрать мелодию',
+    removeBass: 'Убрать бас',
+    removeDrums: 'Убрать барабаны',
     noCapo: 'Без капо',
     fretN: n => `${n} лад`,
     capoWord: 'капо',
@@ -938,6 +948,59 @@ function getBpm() {
   return Math.min(220, Math.max(40, parseInt(document.getElementById('bpmInput').value, 10) || 96));
 }
 
+// ---------- Drum synthesis ----------
+// A synthesized kick (sine sweep) plus filtered white noise for
+// snare/hi-hat/crash — no samples, no dependencies.
+
+let noiseBuffer = null;
+function getNoiseBuffer(ctx) {
+  if (noiseBuffer) return noiseBuffer;
+  const size = ctx.sampleRate; // 1 second, sliced as needed per hit
+  noiseBuffer = ctx.createBuffer(1, size, ctx.sampleRate);
+  const data = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < size; i++) data[i] = Math.random() * 2 - 1;
+  return noiseBuffer;
+}
+
+function playKick(ctx, when) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(150, when);
+  osc.frequency.exponentialRampToValueAtTime(42, when + 0.12);
+  gain.gain.setValueAtTime(0.9, when);
+  gain.gain.exponentialRampToValueAtTime(0.001, when + 0.2);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(when);
+  osc.stop(when + 0.22);
+  activeOscillators.push(osc);
+  osc.addEventListener('ended', () => { activeOscillators = activeOscillators.filter(o => o !== osc); });
+}
+
+function playNoiseHit(ctx, when, duration, highpassFreq, peakGain) {
+  const src = ctx.createBufferSource();
+  src.buffer = getNoiseBuffer(ctx);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.value = highpassFreq;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(peakGain, when);
+  gain.gain.exponentialRampToValueAtTime(0.001, when + duration);
+  src.connect(filter).connect(gain).connect(ctx.destination);
+  src.start(when);
+  src.stop(when + duration + 0.02);
+  activeOscillators.push(src);
+  src.addEventListener('ended', () => { activeOscillators = activeOscillators.filter(o => o !== src); });
+}
+
+function playDrumHit(type, when) {
+  const ctx = getAudioContext();
+  if (type === 'kick') playKick(ctx, when);
+  else if (type === 'snare') playNoiseHit(ctx, when, 0.15, 1000, 0.5);
+  else if (type === 'hihat') playNoiseHit(ctx, when, 0.05, 7000, 0.25);
+  else if (type === 'crash') playNoiseHit(ctx, when, 0.6, 3000, 0.35);
+}
+
 // Open voicing: root in the bass, fifth in the middle, third (or sus tone)
 // on top. The third is what decides major vs minor — keeping it as the
 // highest, most exposed note (instead of sandwiched next to the root, where
@@ -1004,6 +1067,7 @@ function updateAllPlayButtonsUI() {
   setPlayBtnState(document.getElementById('playBtn'), state.activePlayer === 'progression', 'play');
   setPlayBtnState(document.getElementById('melodyPlayBtn'), state.activePlayer === 'melody', 'playMelody');
   setPlayBtnState(document.getElementById('bassPlayBtn'), state.activePlayer === 'bass', 'playBass');
+  setPlayBtnState(document.getElementById('drumsPlayBtn'), state.activePlayer === 'drums', 'playDrums');
   setPlayBtnState(document.getElementById('playAllBtn'), state.activePlayer === 'all', 'playAll');
 }
 
@@ -1042,6 +1106,19 @@ function scheduleBassPlayback(bpm) {
   return scheduleNotesPlayback(state.bass, bpm, 'sine', 0.22);
 }
 
+function scheduleDrumsPlayback(bpm) {
+  const secPerBeat = 60 / bpm;
+  let maxEnd = 0;
+  state.drums.forEach(hit => {
+    if (hit.startBeat > maxEnd) maxEnd = hit.startBeat;
+    const id = setTimeout(() => {
+      playDrumHit(hit.type, getAudioContext().currentTime);
+    }, hit.startBeat * secPerBeat * 1000);
+    playbackTimeouts.push(id);
+  });
+  return (maxEnd + 1) * secPerBeat; // pad past the last hit, which has no explicit duration
+}
+
 function togglePlayer(kind) {
   if (state.activePlayer === kind) {
     stopPlayback();
@@ -1050,7 +1127,8 @@ function togglePlayer(kind) {
   if (!state.progression || !state.progression.length) return;
   if (kind === 'melody' && !state.melody) return;
   if (kind === 'bass' && !state.bass) return;
-  if (kind === 'all' && !state.melody && !state.bass) return;
+  if (kind === 'drums' && !state.drums) return;
+  if (kind === 'all' && !state.melody && !state.bass && !state.drums) return;
   stopPlayback();
   getAudioContext();
   state.activePlayer = kind;
@@ -1064,10 +1142,13 @@ function togglePlayer(kind) {
     totalSeconds = scheduleMelodyPlayback(bpm);
   } else if (kind === 'bass') {
     totalSeconds = scheduleBassPlayback(bpm);
+  } else if (kind === 'drums') {
+    totalSeconds = scheduleDrumsPlayback(bpm);
   } else if (kind === 'all') {
     const ends = [scheduleChordsPlayback(bpm)];
     if (state.melody) ends.push(scheduleMelodyPlayback(bpm));
     if (state.bass) ends.push(scheduleBassPlayback(bpm));
+    if (state.drums) ends.push(scheduleDrumsPlayback(bpm));
     totalSeconds = Math.max(...ends);
   }
 
@@ -1260,23 +1341,102 @@ function renderMelodyBassSVG(melodyNotes, bassNotes, progression, keyRoot, mode)
   return svg;
 }
 
+// ---------- Drum pattern generator ----------
+// One consistent groove for the whole progression (real drum parts loop,
+// they don't reshuffle every bar the way the bass/melody do) chosen from a
+// few standard pop/rock patterns, with a crash accent on beat one and
+// another on the final bar for a natural lift at the end.
+
+const DRUM_MIDI = { kick: 36, snare: 38, hihat: 42, crash: 49 }; // General MIDI percussion notes
+const DRUM_ROWS = ['crash', 'hihat', 'snare', 'kick'];
+const DRUM_PATTERNS = [
+  { kick: [0, 2], snare: [1, 3], hihat: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5] },           // basic rock
+  { kick: [0, 1, 2, 3], snare: [1, 3], hihat: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5] },     // four on the floor
+  { kick: [0, 1.5, 2], snare: [1, 3], hihat: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5] },      // syncopated kick
+];
+
+function generateDrumPattern(progression) {
+  const pattern = DRUM_PATTERNS[Math.floor(Math.random() * DRUM_PATTERNS.length)];
+  const hits = [];
+  progression.forEach((chord, bar) => {
+    const barStart = bar * 4;
+    pattern.hihat.forEach(b => hits.push({ startBeat: barStart + b, type: 'hihat' }));
+    pattern.kick.forEach(b => hits.push({ startBeat: barStart + b, type: 'kick' }));
+    pattern.snare.forEach(b => hits.push({ startBeat: barStart + b, type: 'snare' }));
+  });
+  hits.push({ startBeat: 0, type: 'crash' });
+  if (progression.length > 1) hits.push({ startBeat: (progression.length - 1) * 4, type: 'crash' });
+  return hits;
+}
+
+function renderDrumSVG(drums, progression) {
+  const beatW = 26, rowH = 15;
+  const totalBeats = progression.length * 4;
+  const left = 20, top = 4;
+  const w = left + totalBeats * beatW + 4;
+  const h = top + DRUM_ROWS.length * rowH + 4;
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">`;
+
+  DRUM_ROWS.forEach((row, i) => {
+    const y = top + i * rowH + rowH / 2 + 3;
+    svg += `<text x="0" y="${y}" font-size="9" fill="var(--text-dim)" font-weight="600">${row[0].toUpperCase()}</text>`;
+    svg += `<line x1="${left}" y1="${top + i * rowH + rowH}" x2="${left + totalBeats * beatW}" y2="${top + i * rowH + rowH}" stroke="var(--border)" stroke-width="0.5"/>`;
+  });
+  for (let bar = 0; bar <= progression.length; bar++) {
+    const x = left + bar * 4 * beatW;
+    svg += `<line x1="${x}" y1="${top}" x2="${x}" y2="${h - 4}" stroke="var(--border)" stroke-width="1"/>`;
+  }
+
+  const rowColor = { kick: 'var(--root-color)', snare: 'var(--accent)', hihat: 'var(--accent-2)', crash: 'var(--bass-color)' };
+  drums.forEach(hit => {
+    const rowIdx = DRUM_ROWS.indexOf(hit.type);
+    if (rowIdx < 0) return;
+    const x = left + hit.startBeat * beatW;
+    const y = top + rowIdx * rowH + rowH / 2;
+    svg += `<circle cx="${x}" cy="${y}" r="4.5" fill="${rowColor[hit.type]}"/>`;
+  });
+
+  svg += `</svg>`;
+  return svg;
+}
+
 function renderMelodyPanel() {
   const container = document.getElementById('melodyContainer');
+  const drumsContainer = document.getElementById('drumsContainer');
   const melodyPlayBtn = document.getElementById('melodyPlayBtn');
   const bassPlayBtn = document.getElementById('bassPlayBtn');
+  const drumsPlayBtn = document.getElementById('drumsPlayBtn');
   const playAllBtn = document.getElementById('playAllBtn');
   const downloadBtn = document.getElementById('downloadMidiBtn');
+  const removeMelodyBtn = document.getElementById('removeMelodyBtn');
+  const removeBassBtn = document.getElementById('removeBassBtn');
+  const removeDrumsBtn = document.getElementById('removeDrumsBtn');
 
+  const hasAny = state.melody || state.bass || state.drums;
   melodyPlayBtn.disabled = !state.melody;
   bassPlayBtn.disabled = !state.bass;
-  playAllBtn.disabled = !state.melody && !state.bass;
-  downloadBtn.disabled = !state.melody && !state.bass;
+  drumsPlayBtn.disabled = !state.drums;
+  playAllBtn.disabled = !hasAny;
+  downloadBtn.disabled = !hasAny;
+  removeMelodyBtn.disabled = !state.melody;
+  removeBassBtn.disabled = !state.bass;
+  removeDrumsBtn.disabled = !state.drums;
+  removeMelodyBtn.title = t('removeMelody');
+  removeBassBtn.title = t('removeBass');
+  removeDrumsBtn.title = t('removeDrums');
 
-  if (!state.melody && !state.bass) {
+  if (!hasAny) {
     container.innerHTML = `<p class="melody-placeholder">${t('melodyPlaceholder')}</p>`;
+    drumsContainer.innerHTML = '';
     return;
   }
-  container.innerHTML = `<div class="melody-roll">${renderMelodyBassSVG(state.melody || [], state.bass || [], state.progression, state.root, state.mode)}</div>`;
+  container.innerHTML = (state.melody || state.bass)
+    ? `<div class="melody-roll">${renderMelodyBassSVG(state.melody || [], state.bass || [], state.progression, state.root, state.mode)}</div>`
+    : '';
+  drumsContainer.innerHTML = state.drums
+    ? `<div class="melody-roll">${renderDrumSVG(state.drums, state.progression)}</div>`
+    : '';
 }
 
 function regenerateMelody() {
@@ -1286,10 +1446,23 @@ function regenerateMelody() {
   renderMelodyPanel();
 }
 
+function removeLayer(layer) {
+  stopPlayback();
+  state[layer] = null;
+  renderMelodyPanel();
+}
+
 function regenerateBass() {
   if (!state.progression || !state.progression.length) return;
   stopPlayback();
   state.bass = generateBassLine(state.progression, state.root, state.mode);
+  renderMelodyPanel();
+}
+
+function regenerateDrums() {
+  if (!state.progression || !state.progression.length) return;
+  stopPlayback();
+  state.drums = generateDrumPattern(state.progression);
   renderMelodyPanel();
 }
 
@@ -1314,7 +1487,7 @@ function midiVarLen(value) {
 // without the user having to reassign instruments by hand.
 const GM_PROGRAM = { chords: 0, melody: 80, bass: 33 }; // Acoustic Grand, Lead 1 (square), Electric Bass (finger)
 
-function buildMidiFile(progression, melody, bass, bpm) {
+function buildMidiFile(progression, melody, bass, drums, bpm) {
   const PPQ = 480;
   const barTicks = PPQ * 4;
   const events = []; // {tick, on, note, velocity, channel}
@@ -1343,6 +1516,14 @@ function buildMidiFile(progression, melody, bass, bpm) {
     events.push({ tick: endTick, on: false, note: n.midi, velocity: 0, channel: 2 });
   });
 
+  (drums || []).forEach(hit => {
+    const startTick = Math.round(hit.startBeat * PPQ);
+    const dur = Math.round((hit.type === 'crash' ? PPQ * 1.5 : PPQ * 0.2));
+    const velocity = hit.type === 'crash' ? 110 : hit.type === 'hihat' ? 70 : 100;
+    events.push({ tick: startTick, on: true, note: DRUM_MIDI[hit.type], velocity, channel: 9 });
+    events.push({ tick: startTick + dur, on: false, note: DRUM_MIDI[hit.type], velocity: 0, channel: 9 });
+  });
+
   events.sort((a, b) => a.tick - b.tick || (a.on ? 1 : -1)); // note-offs before note-ons at the same tick
 
   const track = [];
@@ -1369,8 +1550,8 @@ function buildMidiFile(progression, melody, bass, bpm) {
 }
 
 function downloadMelodyMidi() {
-  if (!state.progression || (!state.melody && !state.bass)) return;
-  const bytes = buildMidiFile(state.progression, state.melody, state.bass, getBpm());
+  if (!state.progression || (!state.melody && !state.bass && !state.drums)) return;
+  const bytes = buildMidiFile(state.progression, state.melody, state.bass, state.drums, getBpm());
   const blob = new Blob([bytes], { type: 'audio/midi' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1398,9 +1579,10 @@ const state = {
   progressionLabel: '',
   selectedChordIndex: null,
   showScale: true,
-  activePlayer: null, // null | 'progression' | 'melody' | 'bass' | 'all'
+  activePlayer: null, // null | 'progression' | 'melody' | 'bass' | 'drums' | 'all'
   melody: null,       // array of {startBeat, duration, midi} once generated
   bass: null,         // same shape, once generated
+  drums: null,        // array of {startBeat, type} once generated
 };
 
 function populateSelects() {
@@ -1478,6 +1660,7 @@ function setProgression(chords, label) {
   state.selectedChordIndex = null;
   state.melody = null;
   state.bass = null;
+  state.drums = null;
   renderChordCards();
   updateActiveProgItem();
   renderPiano();
@@ -1664,8 +1847,13 @@ function wireEvents() {
   document.getElementById('pianoPlayBtn').addEventListener('click', playPianoPanel);
   document.getElementById('genMelodyBtn').addEventListener('click', regenerateMelody);
   document.getElementById('genBassBtn').addEventListener('click', regenerateBass);
+  document.getElementById('genDrumsBtn').addEventListener('click', regenerateDrums);
+  document.getElementById('removeMelodyBtn').addEventListener('click', () => removeLayer('melody'));
+  document.getElementById('removeBassBtn').addEventListener('click', () => removeLayer('bass'));
+  document.getElementById('removeDrumsBtn').addEventListener('click', () => removeLayer('drums'));
   document.getElementById('melodyPlayBtn').addEventListener('click', () => togglePlayer('melody'));
   document.getElementById('bassPlayBtn').addEventListener('click', () => togglePlayer('bass'));
+  document.getElementById('drumsPlayBtn').addEventListener('click', () => togglePlayer('drums'));
   document.getElementById('playAllBtn').addEventListener('click', () => togglePlayer('all'));
   document.getElementById('downloadMidiBtn').addEventListener('click', downloadMelodyMidi);
   document.getElementById('randomBtn').addEventListener('click', () => {
