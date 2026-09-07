@@ -130,20 +130,20 @@ function relativeSubstitutes(keyRoot, mode, degreeIndex, keyMap) {
   const degrees = RELATIVE_SUB_DEGREES[mode][degreeIndex] || [];
   return degrees.map(d => {
     const c = diatonicChord(keyRoot, mode, d, keyMap);
-    return { root: c.root, quality: c.quality, name: c.name, kind: 'relative', tag: c.roman, label: `${c.roman} · родственная замена (общие ноты)` };
+    return { root: c.root, quality: c.quality, name: c.name, kind: 'relative', tag: c.roman, label: `${c.roman} · relative substitute (shared tones)` };
   });
 }
 
 function borrowedSubstitute(keyRoot, mode, degreeIndex, chordRoot) {
   if (mode === 'major') {
-    if (degreeIndex === 3) return { root: chordRoot, quality: 'min', name: noteName(chordRoot) + 'm', kind: 'borrowed', tag: 'iv', label: 'заимствован из параллельного минора — печальнее' };
-    if (degreeIndex === 4) { const r = (keyRoot + 10) % 12; return { root: r, quality: 'maj', name: noteName(r), kind: 'borrowed', tag: 'bVII', label: 'bVII — рок/поп каденция вместо V' }; }
-    if (degreeIndex === 5) { const r = (keyRoot + 8) % 12; return { root: r, quality: 'maj', name: noteName(r), kind: 'borrowed', tag: 'bVI', label: 'bVI — заимствованный, кинематографичный' }; }
+    if (degreeIndex === 3) return { root: chordRoot, quality: 'min', name: noteName(chordRoot) + 'm', kind: 'borrowed', tag: 'iv', label: 'borrowed from the parallel minor — sadder' };
+    if (degreeIndex === 4) { const r = (keyRoot + 10) % 12; return { root: r, quality: 'maj', name: noteName(r), kind: 'borrowed', tag: 'bVII', label: 'bVII — rock/pop cadence instead of V' }; }
+    if (degreeIndex === 5) { const r = (keyRoot + 8) % 12; return { root: r, quality: 'maj', name: noteName(r), kind: 'borrowed', tag: 'bVI', label: 'bVI — borrowed, cinematic' }; }
   } else {
-    if (degreeIndex === 3) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'IV', label: 'заимствован из параллельного мажора — светлее' };
-    if (degreeIndex === 4) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'V', label: 'гармонический минор — сильнее тянет в тонику' };
-    if (degreeIndex === 6) { const r = (keyRoot + 11) % 12; return { root: r, quality: 'dim', name: noteName(r) + 'dim', kind: 'borrowed', tag: 'vii°', label: 'вводный тон (гарм. минор) — острее перед i' }; }
-    if (degreeIndex === 0) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'I', label: 'пикардийская терция — светлый мажорный исход' };
+    if (degreeIndex === 3) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'IV', label: 'borrowed from the parallel major — brighter' };
+    if (degreeIndex === 4) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'V', label: 'harmonic minor — pulls into the tonic more strongly' };
+    if (degreeIndex === 6) { const r = (keyRoot + 11) % 12; return { root: r, quality: 'dim', name: noteName(r) + 'dim', kind: 'borrowed', tag: 'vii°', label: 'leading tone (harmonic minor) — sharper before i' }; }
+    if (degreeIndex === 0) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'I', label: 'Picardy third — bright major ending' };
   }
   return null;
 }
@@ -151,7 +151,7 @@ function borrowedSubstitute(keyRoot, mode, degreeIndex, chordRoot) {
 function secondaryDominantSubstitute(nextChord) {
   if (!nextChord) return null;
   const root = (nextChord.root + 7) % 12;
-  return { root, quality: 'maj', name: noteName(root), kind: 'secondary', tag: `V/${nextChord.name}`, label: `вторичная доминанта — тянет в следующий ${nextChord.name}` };
+  return { root, quality: 'maj', name: noteName(root), kind: 'secondary', tag: `V/${nextChord.name}`, label: `secondary dominant — pulls into the next chord, ${nextChord.name}` };
 }
 
 // Suggestions are always derived from the slot's original diatonic chord, so
@@ -179,15 +179,15 @@ function generateSubstitutes(progression, idx, keyRoot, mode, keyMap) {
 // ---------- Progression library (scale-degree indices, 0-based) ----------
 
 const MOODS = {
-  all:       { label: 'Любое настроение' },
-  happy:     { label: '😊 Радостная' },
-  sad:       { label: '😢 Грустная' },
-  epic:      { label: '🔥 Эпичная' },
-  dreamy:    { label: '💭 Мечтательная' },
-  tense:     { label: '⚡ Тревожная' },
-  nostalgic: { label: '🕰 Ностальгическая' },
-  romantic:  { label: '💜 Романтичная' },
-  groovy:    { label: '🕺 Танцевальная' },
+  all:       { label: 'Any mood' },
+  happy:     { label: '😊 Happy' },
+  sad:       { label: '😢 Sad' },
+  epic:      { label: '🔥 Epic' },
+  dreamy:    { label: '💭 Dreamy' },
+  tense:     { label: '⚡ Tense' },
+  nostalgic: { label: '🕰 Nostalgic' },
+  romantic:  { label: '💜 Romantic' },
+  groovy:    { label: '🕺 Groovy' },
 };
 
 const PROGRESSIONS = {
@@ -289,10 +289,10 @@ function powerChordShape(rootPitch) {
   const fretFromA = ((rootPitch - 9) % 12 + 12) % 12;
   if (fretFromE <= fretFromA) {
     const f = fretFromE;
-    return { frets: [f, f + 2, f + 2, -1, -1, -1], baseFretHint: f, shapeName: 'Power (6-я струна)' };
+    return { frets: [f, f + 2, f + 2, -1, -1, -1], baseFretHint: f, shapeName: 'power chord (low E string)' };
   } else {
     const f = fretFromA;
-    return { frets: [-1, f, f + 2, f + 2, -1, -1], baseFretHint: f, shapeName: 'Power (5-я струна)' };
+    return { frets: [-1, f, f + 2, f + 2, -1, -1], baseFretHint: f, shapeName: 'power chord (A string)' };
   }
 }
 
@@ -313,11 +313,11 @@ function resolveGuitarShape(targetRoot, quality, capoFret, style) {
   if (OPEN_SHAPES[key]) {
     const s = OPEN_SHAPES[key];
     const shapeChordName = noteName(shapeRoot) + qualitySuffix(quality);
-    return finalizeDiagram(s.frets, null, shapeChordName, 'открытая', capoFret, false);
+    return finalizeDiagram(s.frets, null, shapeChordName, 'open', capoFret, false);
   }
   const b = barreShape(shapeRoot, quality);
   const shapeChordName = noteName(shapeRoot) + qualitySuffix(quality);
-  return finalizeDiagram(b.frets, b.barre, shapeChordName, 'барре, ' + b.shapeName, capoFret, false);
+  return finalizeDiagram(b.frets, b.barre, shapeChordName, 'barre, ' + b.shapeName, capoFret, false);
 }
 
 function finalizeDiagram(frets, barre, shapeChordName, voicingType, capoFret, isPower) {
@@ -496,7 +496,7 @@ function renderFretboardSVG(rootPc, keySet, keyMap, capoFret) {
     const x = left + capoFret * fretGap - fretGap / 2 + fretGap / 2;
     const xCapo = left + capoFret * fretGap;
     svg += `<rect x="${xCapo - 3}" y="${top - 8}" width="6" height="${5 * stringGap + 16}" rx="3" fill="var(--root-color)" opacity="0.9"/>`;
-    svg += `<text x="${xCapo}" y="${top - 12}" font-size="10" text-anchor="middle" fill="var(--root-color)">капо</text>`;
+    svg += `<text x="${xCapo}" y="${top - 12}" font-size="10" text-anchor="middle" fill="var(--root-color)">capo</text>`;
   }
 
   // fret number labels
@@ -534,8 +534,8 @@ function renderFretboardScale() {
 
   container.innerHTML = renderFretboardSVG(state.root, keySet, keyMap, state.capo);
   info.textContent = state.capo > 0
-    ? `${spell(state.root)} ${state.mode === 'major' ? 'мажор' : 'минор'} — реальные ноты на грифе; затемнённая зона до капо (${state.capo} лад) недоступна`
-    : `${spell(state.root)} ${state.mode === 'major' ? 'мажор' : 'минор'} по всему грифу`;
+    ? `${spell(state.root)} ${state.mode === 'major' ? 'major' : 'minor'} — actual sounding notes; the dimmed zone before the capo (fret ${state.capo}) is unplayable`
+    : `${spell(state.root)} ${state.mode === 'major' ? 'major' : 'minor'} across the whole neck`;
 }
 
 function renderSubstitutions() {
@@ -572,7 +572,7 @@ function renderSubstitutions() {
     if (chord.isSubstituted) {
       const resetChip = document.createElement('button');
       resetChip.className = 'sub-chip reset';
-      resetChip.textContent = `↺ вернуть ${base.name}`;
+      resetChip.textContent = `↺ revert to ${base.name}`;
       resetChip.addEventListener('click', () => resetSubstitute(idx));
       optionsDiv.appendChild(resetChip);
     }
@@ -638,7 +638,7 @@ function populateSelects() {
   for (let i = 0; i <= 7; i++) {
     const opt = document.createElement('option');
     opt.value = i;
-    opt.textContent = i === 0 ? 'Без капо' : `${i} лад`;
+    opt.textContent = i === 0 ? 'No capo' : `Fret ${i}`;
     capoSelect.appendChild(opt);
   }
   capoSelect.value = state.capo;
@@ -662,7 +662,7 @@ function renderProgressionList() {
   if (state.mood !== 'all' && list === fullList) {
     const note = document.createElement('div');
     note.className = 'mood-empty-note';
-    note.textContent = `Нет прогрессий с настроением «${MOODS[state.mood].label.replace(/^\S+\s/, '')}» в этом ладу — показаны все.`;
+    note.textContent = `No progressions tagged "${MOODS[state.mood].label.replace(/^\S+\s/, '')}" in this mode — showing all instead.`;
     container.appendChild(note);
   }
 
@@ -698,7 +698,7 @@ function updateActiveProgItem() {
     el.classList.toggle('active', roman === state.progressionLabel);
   });
   document.getElementById('currentProgLabel').textContent = state.progressionLabel
-    ? `${noteName(state.root)} ${state.mode === 'major' ? 'мажор' : 'минор'} · ${state.progressionLabel}`
+    ? `${noteName(state.root)} ${state.mode === 'major' ? 'major' : 'minor'} · ${state.progressionLabel}`
     : '';
 }
 
@@ -714,7 +714,7 @@ function renderChordCards() {
       : `${shape.shapeChordName} <span class="creal">(${chord.name})</span>`;
     const card = document.createElement('div');
     card.className = 'chord-card' + (state.selectedChordIndex === idx ? ' selected' : '');
-    const romanLine = chord.isSubstituted ? `${chord.roman} <span class="csub-badge">замена</span>` : chord.roman;
+    const romanLine = chord.isSubstituted ? `${chord.roman} <span class="csub-badge">sub</span>` : chord.roman;
     card.innerHTML = `
       <div class="cname">${title}</div>
       <div class="croman">${romanLine}</div>
@@ -744,13 +744,13 @@ function renderPiano() {
     const scale = SCALE_INTERVALS[state.mode].map(iv => (state.root + iv) % 12);
     highlightSet = new Set(scale);
     rootPc = state.root;
-    info.textContent = `Гамма: ${spell(state.root)} ${state.mode === 'major' ? 'мажор' : 'минор'} — ${scale.map(spell).join(', ')}`;
+    info.textContent = `Scale: ${spell(state.root)} ${state.mode === 'major' ? 'major' : 'minor'} — ${scale.map(spell).join(', ')}`;
   } else if (state.progression) {
     const chord = state.progression[state.selectedChordIndex];
     const notes = CHORD_INTERVALS[chord.quality].map(iv => (chord.root + iv) % 12);
     highlightSet = new Set(notes);
     rootPc = chord.root;
-    info.textContent = `Аккорд: ${chord.name} — ноты ${notes.map(spell).join(', ')}`;
+    info.textContent = `Chord: ${chord.name} — notes ${notes.map(spell).join(', ')}`;
   }
 
   container.innerHTML = renderPianoSVG(highlightSet, rootPc, keyMap);

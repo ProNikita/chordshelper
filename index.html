@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +11,7 @@
 
   <header class="topbar">
     <h1>Chord Companion</h1>
-    <p class="subtitle">помощник в написании мелодий и песен</p>
+    <p class="subtitle">a songwriting &amp; melody-writing assistant</p>
   </header>
 
   <div class="layout">
@@ -19,46 +19,46 @@
     <aside class="sidebar">
 
       <section class="panel">
-        <h2>Настройки</h2>
+        <h2>Settings</h2>
         <div class="controls">
           <div class="control-group">
-            <label>Тональность</label>
+            <label>Key</label>
             <div class="row">
               <select id="rootSelect"></select>
               <select id="modeSelect">
-                <option value="major">Мажор</option>
-                <option value="minor">Минор</option>
+                <option value="major">Major</option>
+                <option value="minor">Minor</option>
               </select>
             </div>
           </div>
 
           <div class="control-group">
-            <label>Настроение прогрессии</label>
+            <label>Progression mood</label>
             <select id="moodSelect"></select>
           </div>
 
           <div class="control-group">
-            <label>Капо</label>
+            <label>Capo</label>
             <select id="capoSelect"></select>
           </div>
 
           <div class="control-group">
-            <label>Тип аккордов (гитара)</label>
+            <label>Chord voicing (guitar)</label>
             <div class="segmented" id="styleToggle">
-              <button class="seg-btn active" data-style="acoustic">Акустика</button>
-              <button class="seg-btn" data-style="electric">Электро</button>
+              <button class="seg-btn active" data-style="acoustic">Acoustic</button>
+              <button class="seg-btn" data-style="electric">Electric</button>
             </div>
           </div>
 
           <div class="control-group actions">
-            <button id="randomBtn" class="btn primary">🎲 Случайная прогрессия</button>
-            <button id="surpriseBtn" class="btn">🎲 Удиви меня (любая тональность)</button>
+            <button id="randomBtn" class="btn primary">🎲 Random progression</button>
+            <button id="surpriseBtn" class="btn">🎲 Surprise me (any key)</button>
           </div>
         </div>
       </section>
 
       <section class="panel">
-        <h2>Прогрессии в этой тональности</h2>
+        <h2>Progressions in this key</h2>
         <div id="progressionList" class="progression-list"></div>
       </section>
 
@@ -68,7 +68,7 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Текущая прогрессия</h2>
+          <h2>Current progression</h2>
           <span id="currentProgLabel" class="prog-label"></span>
         </div>
         <div id="chordCards" class="chord-cards"></div>
@@ -76,17 +76,17 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Замены аккордов</h2>
-          <span class="prog-label">чтобы прогрессия не звучала однообразно</span>
+          <h2>Chord substitutions</h2>
+          <span class="prog-label">so the progression doesn't sound monotonous</span>
         </div>
         <div id="subsContainer" class="subs-container"></div>
       </section>
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Пианино</h2>
+          <h2>Piano</h2>
           <div class="piano-toggle">
-            <button id="showScaleBtn" class="btn small active">Показать гамму</button>
+            <button id="showScaleBtn" class="btn small active">Show scale</button>
             <span id="pianoInfo" class="piano-info"></span>
           </div>
         </div>
@@ -95,7 +95,7 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Гамма на грифе гитары</h2>
+          <h2>Scale on the guitar fretboard</h2>
           <span id="fretboardInfo" class="piano-info"></span>
         </div>
         <div id="fretboardContainer" class="fretboard-container"></div>
@@ -106,7 +106,7 @@
   </div>
 
   <footer class="foot">
-    <p>Кликните на аккорд ниже, чтобы увидеть его ноты на клавиатуре. Капо меняет только форму (аппликатуру) для гитары — реальная звучащая тональность и клавиатура пианино не меняются.</p>
+    <p>Click a chord below to see its notes on the keyboard. Capo only changes the shape you finger on guitar — the actual sounding key and the piano keyboard don't change.</p>
   </footer>
 
 </div>

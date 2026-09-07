@@ -1,25 +1,25 @@
 # Chord Companion
 
-Веб-помощник для написания мелодий и песен. Работает полностью в браузере, без сборки — просто открой `index.html` через локальный сервер.
+A songwriting and melody-writing assistant that runs entirely in the browser — no build step, just open `index.html` through a local server.
 
-## Возможности
+## Features
 
-- Выбор тональности (мажор/минор) и фильтр прогрессий по настроению (радостная, грустная, эпичная, мечтательная, тревожная, ностальгическая, романтичная, танцевальная)
-- Библиотека типовых прогрессий + генератор случайных прогрессий
-- Капо (0–7 лад): аккорды пересчитываются в форму для аппликатуры, реальный звучащий аккорд показывается в скобках
-- Тип аккордов на гитаре: акустика (открытые аппликатуры, где возможно) / электро (пауэр-аккорды)
-- Отрисовка гитарных аппликатур (открытые, баррэ, пауэр) и полной гаммы на грифе (15 ладов, с учётом капо)
-- Визуализация гаммы и аккордов на клавиатуре пианино с подписанными клавишами
-- Подсказки замен аккордов (родственные замены, заимствованные аккорды, вторичные доминанты), чтобы прогрессия не звучала однообразно
+- Key picker (major/minor) with a mood filter for progressions (happy, sad, epic, dreamy, tense, nostalgic, romantic, groovy)
+- Library of common progressions + a random progression generator
+- Capo (fret 0–7): chords are recalculated into the shape you actually finger, with the real sounding chord shown in parentheses
+- Guitar chord voicing style: acoustic (open shapes where available) / electric (power chords)
+- Guitar chord diagrams (open, barre, power) and a full scale view across the fretboard (15 frets, capo-aware)
+- Scale and chord visualization on a labeled piano keyboard
+- Chord substitution suggestions (relative substitutes, borrowed chords, secondary dominants) to keep a progression from sounding monotonous
 
-## Запуск
+## Running it
 
 ```bash
 python -m http.server 5183 --directory chord-companion
 ```
 
-Открой `http://localhost:5183` в браузере.
+Open `http://localhost:5183` in your browser.
 
-## Стек
+## Stack
 
-Чистый HTML/CSS/JavaScript, без зависимостей и сборки.
+Plain HTML/CSS/JavaScript, no dependencies, no build step.
