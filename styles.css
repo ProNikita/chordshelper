@@ -36,6 +36,15 @@ body {
   gap: 16px;
   flex-wrap: wrap;
 }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-logo {
+  border-radius: 9px;
+  flex-shrink: 0;
+}
 .topbar h1 {
   margin: 0 0 2px;
   font-size: 26px;
