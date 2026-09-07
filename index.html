@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chord Companion</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <h1>Chord Companion</h1>
+    <p class="subtitle">помощник в написании мелодий и песен</p>
+  </header>
+
+  <div class="layout">
+
+    <aside class="sidebar">
+
+      <section class="panel">
+        <h2>Настройки</h2>
+        <div class="controls">
+          <div class="control-group">
+            <label>Тональность</label>
+            <div class="row">
+              <select id="rootSelect"></select>
+              <select id="modeSelect">
+                <option value="major">Мажор</option>
+                <option value="minor">Минор</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>Настроение прогрессии</label>
+            <select id="moodSelect"></select>
+          </div>
+
+          <div class="control-group">
+            <label>Капо</label>
+            <select id="capoSelect"></select>
+          </div>
+
+          <div class="control-group">
+            <label>Тип аккордов (гитара)</label>
+            <div class="segmented" id="styleToggle">
+              <button class="seg-btn active" data-style="acoustic">Акустика</button>
+              <button class="seg-btn" data-style="electric">Электро</button>
+            </div>
+          </div>
+
+          <div class="control-group actions">
+            <button id="randomBtn" class="btn primary">🎲 Случайная прогрессия</button>
+            <button id="surpriseBtn" class="btn">🎲 Удиви меня (любая тональность)</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Прогрессии в этой тональности</h2>
+        <div id="progressionList" class="progression-list"></div>
+      </section>
+
+    </aside>
+
+    <main class="main">
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Текущая прогрессия</h2>
+          <span id="currentProgLabel" class="prog-label"></span>
+        </div>
+        <div id="chordCards" class="chord-cards"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Замены аккордов</h2>
+          <span class="prog-label">чтобы прогрессия не звучала однообразно</span>
+        </div>
+        <div id="subsContainer" class="subs-container"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Пианино</h2>
+          <div class="piano-toggle">
+            <button id="showScaleBtn" class="btn small active">Показать гамму</button>
+            <span id="pianoInfo" class="piano-info"></span>
+          </div>
+        </div>
+        <div id="pianoContainer" class="piano-container"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Гамма на грифе гитары</h2>
+          <span id="fretboardInfo" class="piano-info"></span>
+        </div>
+        <div id="fretboardContainer" class="fretboard-container"></div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <footer class="foot">
+    <p>Кликните на аккорд ниже, чтобы увидеть его ноты на клавиатуре. Капо меняет только форму (аппликатуру) для гитары — реальная звучащая тональность и клавиатура пианино не меняются.</p>
+  </footer>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
