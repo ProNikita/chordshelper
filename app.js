@@ -34,6 +34,12 @@ const STRINGS = {
     legendRoot: 'Root',
     legendChord: 'Chord tone',
     legendScale: 'Safe note',
+    melodyTitle: 'Melody generator',
+    melodySub: 'an idea to sing or play over this progression',
+    generateMelody: '🎲 Generate melody',
+    playWithChords: '▶ Play with chords',
+    downloadMidi: '⬇ Download MIDI',
+    melodyPlaceholder: 'Click "Generate melody" to create a melody line that fits this progression.',
     noCapo: 'No capo',
     fretN: n => `Fret ${n}`,
     capoWord: 'capo',
@@ -99,6 +105,12 @@ const STRINGS = {
     legendRoot: 'Тоника',
     legendChord: 'Тон аккорда',
     legendScale: 'Безопасная нота',
+    melodyTitle: 'Генератор мелодии',
+    melodySub: 'идея для пения или соло поверх этой прогрессии',
+    generateMelody: '🎲 Сгенерировать мелодию',
+    playWithChords: '▶ Играть с аккордами',
+    downloadMidi: '⬇ Скачать MIDI',
+    melodyPlaceholder: 'Нажми «Сгенерировать мелодию», чтобы создать мелодическую линию под эту прогрессию.',
     noCapo: 'Без капо',
     fretN: n => `${n} лад`,
     capoWord: 'капо',
@@ -797,10 +809,10 @@ function midiToFreq(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-function playNoteAt(ctx, freq, when, duration, peakGain = 0.15) {
+function playNoteAt(ctx, freq, when, duration, peakGain = 0.15, waveType = 'triangle') {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  osc.type = 'triangle';
+  osc.type = waveType;
   osc.frequency.setValueAtTime(freq, when);
   gain.gain.setValueAtTime(0, when);
   gain.gain.linearRampToValueAtTime(peakGain, when + 0.02);
@@ -812,6 +824,10 @@ function playNoteAt(ctx, freq, when, duration, peakGain = 0.15) {
   osc.addEventListener('ended', () => {
     activeOscillators = activeOscillators.filter(o => o !== osc);
   });
+}
+
+function getBpm() {
+  return Math.min(220, Math.max(40, parseInt(document.getElementById('bpmInput').value, 10) || 96));
 }
 
 // Open voicing: root in the bass, fifth in the middle, third on top.
@@ -841,13 +857,17 @@ function playNotesSequence(midiNotes, noteDuration = 0.32) {
   midiNotes.forEach((midi, i) => playNoteAt(ctx, midiToFreq(midi), now + i * noteDuration, noteDuration * 0.95));
 }
 
+// Several buttons ("Play progression", "Play melody", "Play melody + chords")
+// share one audio timeline. state.activePlayer names whichever is running so
+// each button can show its own Stop label, and starting any one of them
+// cleanly cancels whatever was playing before.
 function stopPlayback() {
   playbackTimeouts.forEach(id => clearTimeout(id));
   playbackTimeouts = [];
   activeOscillators.forEach(o => { try { o.stop(); } catch (e) { /* already stopped */ } });
   activeOscillators = [];
-  state.isPlaying = false;
-  updatePlayButtonUI();
+  state.activePlayer = null;
+  updateAllPlayButtonsUI();
   clearPlayingHighlight();
 }
 
@@ -861,24 +881,20 @@ function highlightPlayingCard(idx) {
   if (cards[idx]) cards[idx].classList.add('playing');
 }
 
-function updatePlayButtonUI() {
-  const btn = document.getElementById('playBtn');
-  btn.textContent = state.isPlaying ? t('stop') : t('play');
-  btn.classList.toggle('playing', state.isPlaying);
+function setPlayBtnState(btn, isActive, idleLabelKey) {
+  if (!btn) return;
+  btn.textContent = isActive ? t('stop') : t(idleLabelKey);
+  btn.classList.toggle('playing', isActive);
 }
 
-function togglePlayProgression() {
-  if (state.isPlaying) {
-    stopPlayback();
-    return;
-  }
-  if (!state.progression || !state.progression.length) return;
-  const ctx = getAudioContext();
-  state.isPlaying = true;
-  updatePlayButtonUI();
-  const bpm = Math.min(220, Math.max(40, parseInt(document.getElementById('bpmInput').value, 10) || 96));
-  const secondsPerChord = (60 / bpm) * 4; // one bar per chord
+function updateAllPlayButtonsUI() {
+  setPlayBtnState(document.getElementById('playBtn'), state.activePlayer === 'progression', 'play');
+  setPlayBtnState(document.getElementById('melodyPlayBtn'), state.activePlayer === 'melody', 'play');
+  setPlayBtnState(document.getElementById('melodyWithChordsBtn'), state.activePlayer === 'melodyChords', 'playWithChords');
+}
 
+function scheduleChordsPlayback(bpm) {
+  const secondsPerChord = (60 / bpm) * 4; // one bar per chord
   state.progression.forEach((chord, i) => {
     const id = setTimeout(() => {
       highlightPlayingCard(i);
@@ -886,11 +902,53 @@ function togglePlayProgression() {
     }, i * secondsPerChord * 1000);
     playbackTimeouts.push(id);
   });
+  return state.progression.length * secondsPerChord;
+}
+
+function scheduleMelodyPlayback(bpm) {
+  const secPerBeat = 60 / bpm;
+  let maxEnd = 0;
+  state.melody.forEach(n => {
+    const endBeat = n.startBeat + n.duration;
+    if (endBeat > maxEnd) maxEnd = endBeat;
+    if (n.midi == null) return; // rest
+    const id = setTimeout(() => {
+      playNoteAt(getAudioContext(), midiToFreq(n.midi), getAudioContext().currentTime, n.duration * secPerBeat * 0.88, 0.14, 'square');
+    }, n.startBeat * secPerBeat * 1000);
+    playbackTimeouts.push(id);
+  });
+  return maxEnd * secPerBeat;
+}
+
+function togglePlayer(kind) {
+  if (state.activePlayer === kind) {
+    stopPlayback();
+    return;
+  }
+  if (!state.progression || !state.progression.length) return;
+  if (kind !== 'progression' && !state.melody) return;
+  stopPlayback();
+  getAudioContext();
+  state.activePlayer = kind;
+  updateAllPlayButtonsUI();
+  const bpm = getBpm();
+
+  let totalSeconds = 0;
+  if (kind === 'progression') {
+    totalSeconds = scheduleChordsPlayback(bpm);
+  } else if (kind === 'melody') {
+    totalSeconds = scheduleMelodyPlayback(bpm);
+  } else if (kind === 'melodyChords') {
+    const chordsEnd = scheduleChordsPlayback(bpm);
+    const melodyEnd = scheduleMelodyPlayback(bpm);
+    totalSeconds = Math.max(chordsEnd, melodyEnd);
+  }
+
   const endId = setTimeout(() => {
-    state.isPlaying = false;
-    updatePlayButtonUI();
+    state.activePlayer = null;
+    updateAllPlayButtonsUI();
     clearPlayingHighlight();
-  }, state.progression.length * secondsPerChord * 1000);
+  }, totalSeconds * 1000);
   playbackTimeouts.push(endId);
 }
 
@@ -903,6 +961,216 @@ function playPianoPanel() {
     const chord = state.progression[state.selectedChordIndex];
     playChordNow(chord, 1.4);
   }
+}
+
+// ---------- Melody generator ----------
+// A small rule-based generator: chord tones land on the strong downbeat of
+// each bar, other beats mix in chord tones and scale (passing) tones, and
+// every pitch is placed in whichever octave keeps it close to the previous
+// note — so the line has a singable, stepwise shape instead of jumping
+// around randomly. It always resolves to the key's tonic on the final note.
+
+const MELODY_MIN = 57, MELODY_MAX = 76; // roughly A3–E5, a comfortable lead register
+const RHYTHM_PATTERNS = [
+  [1, 1, 1, 1],
+  [2, 1, 1],
+  [1, 1, 2],
+  [2, 2],
+  [1, 0.5, 0.5, 1, 1],
+  [0.5, 0.5, 1, 1, 1],
+  [4],
+];
+
+// pick the octave of targetPc that lands closest to prevMidi, clamped to [min,max]
+function nearestOctaveNote(targetPc, prevMidi, min, max) {
+  let best = targetPc, bestDist = Infinity;
+  for (let oct = -1; oct <= 10; oct++) {
+    const midi = ((targetPc % 12) + 12) % 12 + oct * 12;
+    const dist = Math.abs(midi - prevMidi);
+    if (dist < bestDist) { bestDist = dist; best = midi; }
+  }
+  while (best < min) best += 12;
+  while (best > max) best -= 12;
+  return best;
+}
+
+function generateMelody(progression, keyRoot, mode) {
+  const scalePcs = SCALE_INTERVALS[mode].map(iv => (keyRoot + iv) % 12);
+  const notes = [];
+  let beatCursor = 0;
+  let prevMidi = nearestOctaveNote(keyRoot, 65, MELODY_MIN, MELODY_MAX);
+
+  progression.forEach((chord, barIdx) => {
+    const chordPcs = CHORD_INTERVALS[chord.quality].map(iv => (chord.root + iv) % 12);
+    const pattern = RHYTHM_PATTERNS[Math.floor(Math.random() * RHYTHM_PATTERNS.length)];
+    const isLastBar = barIdx === progression.length - 1;
+
+    pattern.forEach((dur, i) => {
+      const isDownbeat = i === 0;
+      const isFinalNote = isLastBar && i === pattern.length - 1;
+
+      if (!isDownbeat && !isFinalNote && Math.random() < 0.1) {
+        notes.push({ startBeat: beatCursor, duration: dur, midi: null }); // rest
+        beatCursor += dur;
+        return;
+      }
+
+      let midi;
+      if (isFinalNote) {
+        midi = nearestOctaveNote(keyRoot, prevMidi, MELODY_MIN, MELODY_MAX); // resolve to the tonic
+      } else if (isDownbeat) {
+        const r = Math.random();
+        const targetPc = r < 0.45 ? chordPcs[0] : r < 0.8 ? chordPcs[1] : chordPcs[2];
+        midi = nearestOctaveNote(targetPc, prevMidi, MELODY_MIN, MELODY_MAX);
+      } else {
+        const pool = Math.random() < 0.55 ? chordPcs : scalePcs;
+        const candidates = pool
+          .map(pc => nearestOctaveNote(pc, prevMidi, MELODY_MIN, MELODY_MAX))
+          .sort((a, b) => Math.abs(a - prevMidi) - Math.abs(b - prevMidi));
+        midi = candidates[Math.floor(Math.random() * Math.min(2, candidates.length))];
+      }
+
+      notes.push({ startBeat: beatCursor, duration: dur, midi });
+      prevMidi = midi;
+      beatCursor += dur;
+    });
+  });
+
+  return notes;
+}
+
+function renderMelodySVG(notes, progression, keyRoot, mode) {
+  const keyMap = buildKeyNoteMap(keyRoot, mode);
+  const beatW = 26;
+  const rowH = 8;
+  const rows = MELODY_MAX - MELODY_MIN + 2;
+  const totalBeats = progression.length * 4;
+  const left = 4, top = 22;
+  const w = left + totalBeats * beatW + 4;
+  const h = top + rows * rowH + 6;
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // bar dividers + chord names on top
+  progression.forEach((chord, i) => {
+    const x = left + i * 4 * beatW;
+    svg += `<line x1="${x}" y1="${top}" x2="${x}" y2="${h - 4}" stroke="var(--border)" stroke-width="1"/>`;
+    svg += `<text x="${x + 4}" y="14" font-size="11" fill="var(--text-dim)" font-weight="600">${chord.name}</text>`;
+  });
+  svg += `<line x1="${left + totalBeats * beatW}" y1="${top}" x2="${left + totalBeats * beatW}" y2="${h - 4}" stroke="var(--border)" stroke-width="1"/>`;
+
+  notes.forEach(n => {
+    if (n.midi == null) return;
+    const x = left + n.startBeat * beatW + 1;
+    const width = n.duration * beatW - 2;
+    const y = top + (MELODY_MAX - n.midi) * rowH;
+    const isRoot = ((n.midi % 12) + 12) % 12 === keyRoot;
+    const fill = isRoot ? 'var(--root-color)' : 'var(--accent)';
+    svg += `<rect x="${x}" y="${y}" width="${Math.max(width, 3)}" height="${rowH - 2}" rx="2" fill="${fill}"/>`;
+    if (width > 14) {
+      svg += `<text x="${x + width / 2}" y="${y + rowH - 3}" font-size="6.5" text-anchor="middle" fill="#10131a" font-weight="700">${keyMap.get(((n.midi % 12) + 12) % 12) || noteName(n.midi % 12)}</text>`;
+    }
+  });
+
+  svg += `</svg>`;
+  return svg;
+}
+
+function renderMelodyPanel() {
+  const container = document.getElementById('melodyContainer');
+  const playBtn = document.getElementById('melodyPlayBtn');
+  const withChordsBtn = document.getElementById('melodyWithChordsBtn');
+  const downloadBtn = document.getElementById('downloadMidiBtn');
+
+  if (!state.melody) {
+    container.innerHTML = `<p class="melody-placeholder">${t('melodyPlaceholder')}</p>`;
+    [playBtn, withChordsBtn, downloadBtn].forEach(b => b.disabled = true);
+    return;
+  }
+  [playBtn, withChordsBtn, downloadBtn].forEach(b => b.disabled = false);
+  container.innerHTML = `<div class="melody-roll">${renderMelodySVG(state.melody, state.progression, state.root, state.mode)}</div>`;
+}
+
+function regenerateMelody() {
+  if (!state.progression || !state.progression.length) return;
+  stopPlayback();
+  state.melody = generateMelody(state.progression, state.root, state.mode);
+  renderMelodyPanel();
+}
+
+// ---------- MIDI file export ----------
+
+function midiVarLen(value) {
+  let buffer = value & 0x7f;
+  while ((value >>>= 7) > 0) {
+    buffer <<= 8;
+    buffer |= 0x80 | (value & 0x7f);
+  }
+  const bytes = [];
+  while (true) {
+    bytes.push(buffer & 0xff);
+    if (buffer & 0x80) buffer >>>= 8;
+    else break;
+  }
+  return bytes;
+}
+
+function buildMidiFile(progression, melody, bpm) {
+  const PPQ = 480;
+  const barTicks = PPQ * 4;
+  const events = []; // {tick, on, note, velocity, channel}
+
+  progression.forEach((chord, i) => {
+    const startTick = i * barTicks;
+    chordVoicing(chord).forEach(v => {
+      events.push({ tick: startTick, on: true, note: v.midi, velocity: 78, channel: 0 });
+      events.push({ tick: startTick + barTicks - 10, on: false, note: v.midi, velocity: 0, channel: 0 });
+    });
+  });
+
+  melody.forEach(n => {
+    if (n.midi == null) return;
+    const startTick = Math.round(n.startBeat * PPQ);
+    const endTick = startTick + Math.round(n.duration * PPQ * 0.9);
+    events.push({ tick: startTick, on: true, note: n.midi, velocity: 100, channel: 1 });
+    events.push({ tick: endTick, on: false, note: n.midi, velocity: 0, channel: 1 });
+  });
+
+  events.sort((a, b) => a.tick - b.tick || (a.on ? 1 : -1)); // note-offs before note-ons at the same tick
+
+  const track = [];
+  const usPerQuarter = Math.round(60000000 / bpm);
+  track.push(...midiVarLen(0), 0xff, 0x51, 0x03, (usPerQuarter >> 16) & 0xff, (usPerQuarter >> 8) & 0xff, usPerQuarter & 0xff);
+
+  let lastTick = 0;
+  events.forEach(e => {
+    track.push(...midiVarLen(Math.max(0, e.tick - lastTick)));
+    lastTick = e.tick;
+    track.push((e.on ? 0x90 : 0x80) | e.channel, e.note, e.velocity);
+  });
+  track.push(...midiVarLen(0), 0xff, 0x2f, 0x00);
+
+  const header = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, (PPQ >> 8) & 0xff, PPQ & 0xff];
+  const trackHeader = [
+    0x4d, 0x54, 0x72, 0x6b,
+    (track.length >>> 24) & 0xff, (track.length >>> 16) & 0xff, (track.length >>> 8) & 0xff, track.length & 0xff,
+  ];
+  return new Uint8Array([...header, ...trackHeader, ...track]);
+}
+
+function downloadMelodyMidi() {
+  if (!state.melody || !state.progression) return;
+  const bytes = buildMidiFile(state.progression, state.melody, getBpm());
+  const blob = new Blob([bytes], { type: 'audio/midi' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const keyName = noteName(state.root) + (state.mode === 'minor' ? 'm' : '');
+  a.href = url;
+  a.download = `chord-companion-${keyName}.mid`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ---------- App state & wiring ----------
@@ -919,7 +1187,8 @@ const state = {
   progressionLabel: '',
   selectedChordIndex: null,
   showScale: true,
-  isPlaying: false,
+  activePlayer: null, // null | 'progression' | 'melody' | 'melodyChords'
+  melody: null,       // array of {startBeat, duration, midi} once generated
 };
 
 function populateSelects() {
@@ -995,10 +1264,13 @@ function setProgression(chords, label) {
   state.progression = chords;
   state.progressionLabel = label;
   state.selectedChordIndex = null;
+  state.melody = null;
   renderChordCards();
   updateActiveProgItem();
   renderPiano();
+  renderFretboardScale();
   renderSubstitutions();
+  renderMelodyPanel();
 }
 
 function updateActiveProgItem() {
@@ -1165,8 +1437,12 @@ function wireEvents() {
       refreshAll();
     });
   });
-  document.getElementById('playBtn').addEventListener('click', togglePlayProgression);
+  document.getElementById('playBtn').addEventListener('click', () => togglePlayer('progression'));
   document.getElementById('pianoPlayBtn').addEventListener('click', playPianoPanel);
+  document.getElementById('genMelodyBtn').addEventListener('click', regenerateMelody);
+  document.getElementById('melodyPlayBtn').addEventListener('click', () => togglePlayer('melody'));
+  document.getElementById('melodyWithChordsBtn').addEventListener('click', () => togglePlayer('melodyChords'));
+  document.getElementById('downloadMidiBtn').addEventListener('click', downloadMelodyMidi);
   document.getElementById('randomBtn').addEventListener('click', () => {
     const chords = randomProgression(state.root, state.mode, state.mood);
     setProgression(chords, chords.map(c => c.roman).join(' – '));

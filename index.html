@@ -108,6 +108,20 @@
 
       <section class="panel">
         <div class="panel-header">
+          <h2 data-i18n="melodyTitle">Melody generator</h2>
+          <span class="prog-label" data-i18n="melodySub">an idea to sing or play over this progression</span>
+        </div>
+        <div class="play-bar melody-bar">
+          <button id="genMelodyBtn" class="btn primary" data-i18n="generateMelody">🎲 Generate melody</button>
+          <button id="melodyPlayBtn" class="btn play-btn" data-i18n="play" disabled>▶ Play</button>
+          <button id="melodyWithChordsBtn" class="btn play-btn" data-i18n="playWithChords" disabled>▶ Play with chords</button>
+          <button id="downloadMidiBtn" class="btn" data-i18n="downloadMidi" disabled>⬇ Download MIDI</button>
+        </div>
+        <div id="melodyContainer" class="melody-container"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
           <h2 data-i18n="pianoTitle">Piano</h2>
           <div class="piano-toggle">
             <button id="showScaleBtn" class="btn small active" data-i18n="showScale">Show scale</button>
