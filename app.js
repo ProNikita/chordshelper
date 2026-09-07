@@ -14,6 +14,9 @@ const STRINGS = {
     chordViewLabel: 'Chord diagrams',
     guitar: 'Guitar',
     piano: 'Piano',
+    richLabel: 'Chord color',
+    triadsOpt: 'Triads',
+    extendedOpt: '7th & sus',
     capoLabel: 'Capo',
     voicingLabel: 'Chord voicing (guitar)',
     acoustic: 'Acoustic',
@@ -50,10 +53,8 @@ const STRINGS = {
     moodEmptyNote: moodName => `No progressions tagged "${moodName}" in this mode — showing all instead.`,
     voicingOpen: 'open',
     voicingBarre: shapeName => `barre, ${shapeName}`,
-    shapeE: 'E-shape',
-    shapeEm: 'Em-shape',
-    shapeA: 'A-shape',
-    shapeAm: 'Am-shape',
+    voicingApprox: ' (triad shape)',
+    shapeLetter: (letter, suf) => `${letter}${suf}-shape`,
     powerLowE: 'power chord (low E string)',
     powerA: 'power chord (A string)',
     subBadge: 'sub',
@@ -85,6 +86,9 @@ const STRINGS = {
     chordViewLabel: 'Вид аккордов',
     guitar: 'Гитара',
     piano: 'Пианино',
+    richLabel: 'Окраска аккордов',
+    triadsOpt: 'Трезвучия',
+    extendedOpt: 'Септ и sus',
     capoLabel: 'Капо',
     voicingLabel: 'Тип аккордов (гитара)',
     acoustic: 'Акустика',
@@ -121,10 +125,8 @@ const STRINGS = {
     moodEmptyNote: moodName => `Нет прогрессий с настроением «${moodName}» в этом ладу — показаны все.`,
     voicingOpen: 'открытая',
     voicingBarre: shapeName => `барре, ${shapeName}`,
-    shapeE: 'форма E',
-    shapeEm: 'форма Em',
-    shapeA: 'форма A',
-    shapeAm: 'форма Am',
+    voicingApprox: ' (форма трезвучия)',
+    shapeLetter: (letter, suf) => `форма ${letter}${suf}`,
     powerLowE: 'пауэр-аккорд (6-я струна)',
     powerA: 'пауэр-аккорд (5-я струна)',
     subBadge: 'замена',
@@ -258,6 +260,13 @@ const DEGREE_QUALITY = {
   minor: ['min','dim','maj','min','min','maj','maj'],
 };
 
+// Standard diatonic 7th-chord harmonization, used instead of DEGREE_QUALITY
+// when state.richChords is on.
+const DEGREE_QUALITY_EXT = {
+  major: ['maj7','m7','m7','maj7','dom7','m7','m7b5'],
+  minor: ['m7','m7b5','maj7','m7','m7','maj7','dom7'],
+};
+
 const ROMAN = {
   major: ['I','ii','iii','IV','V','vi','vii°'],
   minor: ['i','ii°','III','iv','v','VI','VII'],
@@ -267,18 +276,27 @@ const CHORD_INTERVALS = {
   maj: [0,4,7],
   min: [0,3,7],
   dim: [0,3,6],
+  dom7: [0,4,7,10],
+  maj7: [0,4,7,11],
+  m7: [0,3,7,10],
+  m7b5: [0,3,6,10],
+  sus2: [0,2,7],
+  sus4: [0,5,7],
+  add9: [0,4,7,14],
 };
 
 function qualitySuffix(q) {
   if (q === 'maj') return '';
   if (q === 'min') return 'm';
   if (q === 'dim') return 'dim';
-  return '';
+  if (q === 'dom7') return '7';
+  return q; // maj7, m7, m7b5, sus2, sus4, add9 already read correctly appended to a root name
 }
 
 function diatonicChord(keyRoot, mode, degreeIndex, keyMap) {
   const scale = SCALE_INTERVALS[mode];
-  const quality = DEGREE_QUALITY[mode][degreeIndex];
+  const qualityTable = state.richChords ? DEGREE_QUALITY_EXT : DEGREE_QUALITY;
+  const quality = qualityTable[mode][degreeIndex];
   const root = (keyRoot + scale[degreeIndex]) % 12;
   const map = keyMap || buildKeyNoteMap(keyRoot, mode);
   return {
@@ -414,34 +432,61 @@ const OPEN_SHAPES = {
   '9-min':  { frets:[-1,0,2,2,1,0], fingers:[0,0,2,3,1,0] },      // Am
 };
 
+// Movable barre-chord templates (fret offsets relative to the barre fret),
+// derived from the well-known open E/A CAGED shapes. Only qualities with a
+// genuinely playable movable barre form are listed here; anything else
+// (m7b5, add9, sus2) falls back to the closest triad shape below — the
+// audio/piano/fretboard/MIDI still use the exact chord, only the guitar
+// diagram simplifies.
+const E_SHAPE_PATTERNS = {
+  maj:   [0,2,2,1,0,0],
+  min:   [0,2,2,0,0,0],
+  dom7:  [0,2,0,1,0,0],
+  maj7:  [0,2,1,1,0,0],
+  m7:    [0,2,0,0,0,0],
+  sus4:  [0,2,2,2,0,0],
+};
+const A_SHAPE_PATTERNS = {
+  maj:   [-1,0,2,2,2,0],
+  min:   [-1,0,2,2,1,0],
+  dom7:  [-1,0,2,0,2,0],
+  maj7:  [-1,0,2,1,2,0],
+  m7:    [-1,0,2,0,1,0],
+  sus4:  [-1,0,2,2,3,0],
+};
+const SHAPE_QUALITY_FALLBACK = { m7b5: 'min', add9: 'maj', sus2: 'maj' };
+
 function barreShape(rootPitch, quality) {
+  const shapeQuality = E_SHAPE_PATTERNS[quality] ? quality : (SHAPE_QUALITY_FALLBACK[quality] || 'maj');
+  const isApprox = shapeQuality !== quality;
+
   // choose between E-shape (root on low E string) and A-shape (root on A string),
   // pick whichever gives the lower (easier) fret.
   const fretFromE = ((rootPitch - 4) % 12 + 12) % 12; // low E open = pitch 4
   const fretFromA = ((rootPitch - 9) % 12 + 12) % 12; // A open = pitch 9
+  const useAShape = fretFromA < fretFromE;
 
-  const useAShape = fretFromA < fretFromE || (fretFromA <= fretFromE && fretFromA !== 0 && fretFromE === 0);
-  if (fretFromE === 0) {
-    // root note itself is E -> just use open E/Em shape territory, but keep barre form for consistency at fret 0 only if quality matches open dict
-  }
+  const letter = useAShape ? 'A' : 'E';
+  const suf = qualitySuffix(shapeQuality);
+  const shapeName = t('shapeLetter', letter, suf) + (isApprox ? t('voicingApprox') : '');
 
   if (!useAShape) {
     const f = fretFromE;
-    const shape = quality === 'min' ? [0,2,2,0,0,0] : [0,2,2,1,0,0];
+    const shape = E_SHAPE_PATTERNS[shapeQuality];
     return {
       frets: shape.map(v => v === -1 ? -1 : v + f),
       barre: f > 0 ? { fret: f, from: 0, to: 5 } : null,
       baseFretHint: f,
-      shapeName: quality === 'min' ? t('shapeEm') : t('shapeE'),
+      shapeName,
     };
   } else {
     const f = fretFromA;
-    const shape = quality === 'min' ? [-1,0,2,2,1,0] : [-1,0,2,2,2,0];
+    const shape = A_SHAPE_PATTERNS[shapeQuality];
     return {
       frets: shape.map(v => v === -1 ? -1 : v + f),
       barre: f > 0 ? { fret: f, from: 1, to: 5 } : null,
       baseFretHint: f,
-      shapeName: quality === 'min' ? t('shapeAm') : t('shapeA'),
+      shapeName,
     };
   }
 }
@@ -830,19 +875,24 @@ function getBpm() {
   return Math.min(220, Math.max(40, parseInt(document.getElementById('bpmInput').value, 10) || 96));
 }
 
-// Open voicing: root in the bass, fifth in the middle, third on top.
-// The third is what decides major vs minor — keeping it as the highest,
-// most exposed note (instead of sandwiched next to the root, where its
-// pitch gets masked by the root's own low harmonics) makes that call
-// obvious to the ear instead of ambiguous.
+// Open voicing: root in the bass, fifth in the middle, third (or sus tone)
+// on top. The third is what decides major vs minor — keeping it as the
+// highest, most exposed note (instead of sandwiched next to the root, where
+// its pitch gets masked by the root's own low harmonics) makes that call
+// obvious to the ear instead of ambiguous. A 4th interval (7th/9th on
+// extended chords) is added on top of that, an octave up, as extra color.
 function chordVoicing(chord) {
   const iv = CHORD_INTERVALS[chord.quality];
   const rootMidi = 48 + chord.root;
-  return [
+  const notes = [
     { midi: rootMidi, gain: 0.16 },          // root
     { midi: rootMidi + iv[2], gain: 0.12 },  // fifth
-    { midi: rootMidi + iv[1] + 12, gain: 0.19 }, // third, an octave up
+    { midi: rootMidi + iv[1] + 12, gain: 0.19 }, // third/sus tone, an octave up
   ];
+  if (iv.length > 3) {
+    notes.push({ midi: rootMidi + iv[3] + 12, gain: 0.13 }); // 7th/9th, color on top
+  }
+  return notes;
 }
 
 function playChordNow(chord, duration = 1.1) {
@@ -1183,6 +1233,7 @@ const state = {
   capo: 0,
   style: 'acoustic',
   chordView: 'guitar', // 'guitar' | 'piano'
+  richChords: false,   // false = triads, true = diatonic 7th chords (maj7/m7/7/m7b5)
   progression: null,       // array of chord objects
   progressionLabel: '',
   selectedChordIndex: null,
@@ -1424,6 +1475,16 @@ function wireEvents() {
       state.chordView = btn.dataset.view;
       setChordViewVisibility();
       renderChordCards();
+    });
+  });
+  document.querySelectorAll('#richToggle .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rich = btn.dataset.rich === 'on';
+      if (rich === state.richChords) return;
+      document.querySelectorAll('#richToggle .seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.richChords = rich;
+      refreshAll();
     });
   });
   document.querySelectorAll('#langToggle .seg-btn').forEach(btn => {
