@@ -1,3 +1,149 @@
+// ---------- i18n ----------
+
+const MOOD_EMOJI = { all: '', happy: '😊', sad: '😢', epic: '🔥', dreamy: '💭', tense: '⚡', nostalgic: '🕰', romantic: '💜', groovy: '🕺' };
+const MOOD_KEYS = ['all', 'happy', 'sad', 'epic', 'dreamy', 'tense', 'nostalgic', 'romantic', 'groovy'];
+
+const STRINGS = {
+  en: {
+    subtitle: 'a songwriting & melody-writing assistant',
+    settingsTitle: 'Settings',
+    keyLabel: 'Key',
+    major: 'Major',
+    minor: 'Minor',
+    moodLabel: 'Progression mood',
+    chordViewLabel: 'Chord diagrams',
+    guitar: 'Guitar',
+    piano: 'Piano',
+    capoLabel: 'Capo',
+    voicingLabel: 'Chord voicing (guitar)',
+    acoustic: 'Acoustic',
+    electric: 'Electric',
+    randomBtn: '🎲 Random progression',
+    surpriseBtn: '🎲 Surprise me (any key)',
+    progressionsInKey: 'Progressions in this key',
+    currentProgression: 'Current progression',
+    chordSubstitutions: 'Chord substitutions',
+    chordSubstitutionsSub: "so the progression doesn't sound monotonous",
+    pianoTitle: 'Piano',
+    showScale: 'Show scale',
+    fretboardTitle: 'Scale on the guitar fretboard',
+    footer: "Click a chord below to see its notes on the keyboard. Capo only changes the shape you finger on guitar — the actual sounding key and the piano keyboard don't change.",
+    noCapo: 'No capo',
+    fretN: n => `Fret ${n}`,
+    capoWord: 'capo',
+    moodNames: {
+      all: 'Any mood', happy: 'Happy', sad: 'Sad', epic: 'Epic', dreamy: 'Dreamy',
+      tense: 'Tense', nostalgic: 'Nostalgic', romantic: 'Romantic', groovy: 'Groovy',
+    },
+    moodEmptyNote: moodName => `No progressions tagged "${moodName}" in this mode — showing all instead.`,
+    voicingOpen: 'open',
+    voicingBarre: shapeName => `barre, ${shapeName}`,
+    shapeE: 'E-shape',
+    shapeEm: 'Em-shape',
+    shapeA: 'A-shape',
+    shapeAm: 'Am-shape',
+    powerLowE: 'power chord (low E string)',
+    powerA: 'power chord (A string)',
+    subBadge: 'sub',
+    revertTo: name => `↺ revert to ${name}`,
+    notesLabel: list => `Notes: ${list}`,
+    pianoScaleInfo: (root, mode, notes) => `Scale: ${root} ${mode} — ${notes}`,
+    pianoChordInfo: (name, notes) => `Chord: ${name} — notes ${notes}`,
+    fretboardCapoInfo: (root, mode, capo) => `${root} ${mode} — actual sounding notes; the dimmed zone before the capo (fret ${capo}) is unplayable`,
+    fretboardInfo: (root, mode) => `${root} ${mode} across the whole neck`,
+    relativeLabel: roman => `${roman} · relative substitute (shared tones)`,
+    sub_maj_iv: 'borrowed from the parallel minor — sadder',
+    sub_maj_bVII: 'bVII — rock/pop cadence instead of V',
+    sub_maj_bVI: 'bVI — borrowed, cinematic',
+    sub_min_IV: 'borrowed from the parallel major — brighter',
+    sub_min_V: 'harmonic minor — pulls into the tonic more strongly',
+    sub_min_vii: 'leading tone (harmonic minor) — sharper before i',
+    sub_min_I: 'Picardy third — bright major ending',
+    secondaryDom: name => `secondary dominant — pulls into the next chord, ${name}`,
+  },
+  ru: {
+    subtitle: 'помощник в написании мелодий и песен',
+    settingsTitle: 'Настройки',
+    keyLabel: 'Тональность',
+    major: 'Мажор',
+    minor: 'Минор',
+    moodLabel: 'Настроение прогрессии',
+    chordViewLabel: 'Вид аккордов',
+    guitar: 'Гитара',
+    piano: 'Пианино',
+    capoLabel: 'Капо',
+    voicingLabel: 'Тип аккордов (гитара)',
+    acoustic: 'Акустика',
+    electric: 'Электро',
+    randomBtn: '🎲 Случайная прогрессия',
+    surpriseBtn: '🎲 Удиви меня (любая тональность)',
+    progressionsInKey: 'Прогрессии в этой тональности',
+    currentProgression: 'Текущая прогрессия',
+    chordSubstitutions: 'Замены аккордов',
+    chordSubstitutionsSub: 'чтобы прогрессия не звучала однообразно',
+    pianoTitle: 'Пианино',
+    showScale: 'Показать гамму',
+    fretboardTitle: 'Гамма на грифе гитары',
+    footer: 'Кликните на аккорд ниже, чтобы увидеть его ноты на клавиатуре. Капо меняет только форму (аппликатуру) для гитары — реальная звучащая тональность и клавиатура пианино не меняются.',
+    noCapo: 'Без капо',
+    fretN: n => `${n} лад`,
+    capoWord: 'капо',
+    moodNames: {
+      all: 'Любое настроение', happy: 'Радостная', sad: 'Грустная', epic: 'Эпичная', dreamy: 'Мечтательная',
+      tense: 'Тревожная', nostalgic: 'Ностальгическая', romantic: 'Романтичная', groovy: 'Танцевальная',
+    },
+    moodEmptyNote: moodName => `Нет прогрессий с настроением «${moodName}» в этом ладу — показаны все.`,
+    voicingOpen: 'открытая',
+    voicingBarre: shapeName => `барре, ${shapeName}`,
+    shapeE: 'форма E',
+    shapeEm: 'форма Em',
+    shapeA: 'форма A',
+    shapeAm: 'форма Am',
+    powerLowE: 'пауэр-аккорд (6-я струна)',
+    powerA: 'пауэр-аккорд (5-я струна)',
+    subBadge: 'замена',
+    revertTo: name => `↺ вернуть ${name}`,
+    notesLabel: list => `Ноты: ${list}`,
+    pianoScaleInfo: (root, mode, notes) => `Гамма: ${root} ${mode} — ${notes}`,
+    pianoChordInfo: (name, notes) => `Аккорд: ${name} — ноты ${notes}`,
+    fretboardCapoInfo: (root, mode, capo) => `${root} ${mode} — реальные ноты на грифе; затемнённая зона до капо (${capo} лад) недоступна`,
+    fretboardInfo: (root, mode) => `${root} ${mode} по всему грифу`,
+    relativeLabel: roman => `${roman} · родственная замена (общие ноты)`,
+    sub_maj_iv: 'заимствован из параллельного минора — печальнее',
+    sub_maj_bVII: 'bVII — рок/поп каденция вместо V',
+    sub_maj_bVI: 'bVI — заимствованный, кинематографичный',
+    sub_min_IV: 'заимствован из параллельного мажора — светлее',
+    sub_min_V: 'гармонический минор — сильнее тянет в тонику',
+    sub_min_vii: 'вводный тон (гарм. минор) — острее перед i',
+    sub_min_I: 'пикардийская терция — светлый мажорный исход',
+    secondaryDom: name => `вторичная доминанта — тянет в следующий ${name}`,
+  },
+};
+
+function t(key, ...args) {
+  const entry = STRINGS[state.lang][key] ?? STRINGS.en[key];
+  return typeof entry === 'function' ? entry(...args) : entry;
+}
+
+function modeWord(mode) {
+  return mode === 'major' ? t('major') : t('minor');
+}
+
+function moodLabel(key) {
+  const name = STRINGS[state.lang].moodNames[key] ?? STRINGS.en.moodNames[key];
+  const emoji = MOOD_EMOJI[key];
+  return emoji ? `${emoji} ${name}` : name;
+}
+
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.getElementById('langToggle').querySelectorAll('.seg-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === state.lang);
+  });
+}
+
 // ---------- Music theory core ----------
 
 const PITCH_NAMES_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
@@ -130,20 +276,20 @@ function relativeSubstitutes(keyRoot, mode, degreeIndex, keyMap) {
   const degrees = RELATIVE_SUB_DEGREES[mode][degreeIndex] || [];
   return degrees.map(d => {
     const c = diatonicChord(keyRoot, mode, d, keyMap);
-    return { root: c.root, quality: c.quality, name: c.name, kind: 'relative', tag: c.roman, label: `${c.roman} · relative substitute (shared tones)` };
+    return { root: c.root, quality: c.quality, name: c.name, kind: 'relative', tag: c.roman, label: t('relativeLabel', c.roman) };
   });
 }
 
 function borrowedSubstitute(keyRoot, mode, degreeIndex, chordRoot) {
   if (mode === 'major') {
-    if (degreeIndex === 3) return { root: chordRoot, quality: 'min', name: noteName(chordRoot) + 'm', kind: 'borrowed', tag: 'iv', label: 'borrowed from the parallel minor — sadder' };
-    if (degreeIndex === 4) { const r = (keyRoot + 10) % 12; return { root: r, quality: 'maj', name: noteName(r), kind: 'borrowed', tag: 'bVII', label: 'bVII — rock/pop cadence instead of V' }; }
-    if (degreeIndex === 5) { const r = (keyRoot + 8) % 12; return { root: r, quality: 'maj', name: noteName(r), kind: 'borrowed', tag: 'bVI', label: 'bVI — borrowed, cinematic' }; }
+    if (degreeIndex === 3) return { root: chordRoot, quality: 'min', name: noteName(chordRoot) + 'm', kind: 'borrowed', tag: 'iv', label: t('sub_maj_iv') };
+    if (degreeIndex === 4) { const r = (keyRoot + 10) % 12; return { root: r, quality: 'maj', name: noteName(r), kind: 'borrowed', tag: 'bVII', label: t('sub_maj_bVII') }; }
+    if (degreeIndex === 5) { const r = (keyRoot + 8) % 12; return { root: r, quality: 'maj', name: noteName(r), kind: 'borrowed', tag: 'bVI', label: t('sub_maj_bVI') }; }
   } else {
-    if (degreeIndex === 3) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'IV', label: 'borrowed from the parallel major — brighter' };
-    if (degreeIndex === 4) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'V', label: 'harmonic minor — pulls into the tonic more strongly' };
-    if (degreeIndex === 6) { const r = (keyRoot + 11) % 12; return { root: r, quality: 'dim', name: noteName(r) + 'dim', kind: 'borrowed', tag: 'vii°', label: 'leading tone (harmonic minor) — sharper before i' }; }
-    if (degreeIndex === 0) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'I', label: 'Picardy third — bright major ending' };
+    if (degreeIndex === 3) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'IV', label: t('sub_min_IV') };
+    if (degreeIndex === 4) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'V', label: t('sub_min_V') };
+    if (degreeIndex === 6) { const r = (keyRoot + 11) % 12; return { root: r, quality: 'dim', name: noteName(r) + 'dim', kind: 'borrowed', tag: 'vii°', label: t('sub_min_vii') }; }
+    if (degreeIndex === 0) return { root: chordRoot, quality: 'maj', name: noteName(chordRoot), kind: 'borrowed', tag: 'I', label: t('sub_min_I') };
   }
   return null;
 }
@@ -151,7 +297,7 @@ function borrowedSubstitute(keyRoot, mode, degreeIndex, chordRoot) {
 function secondaryDominantSubstitute(nextChord) {
   if (!nextChord) return null;
   const root = (nextChord.root + 7) % 12;
-  return { root, quality: 'maj', name: noteName(root), kind: 'secondary', tag: `V/${nextChord.name}`, label: `secondary dominant — pulls into the next chord, ${nextChord.name}` };
+  return { root, quality: 'maj', name: noteName(root), kind: 'secondary', tag: `V/${nextChord.name}`, label: t('secondaryDom', nextChord.name) };
 }
 
 // Suggestions are always derived from the slot's original diatonic chord, so
@@ -177,18 +323,6 @@ function generateSubstitutes(progression, idx, keyRoot, mode, keyMap) {
 }
 
 // ---------- Progression library (scale-degree indices, 0-based) ----------
-
-const MOODS = {
-  all:       { label: 'Any mood' },
-  happy:     { label: '😊 Happy' },
-  sad:       { label: '😢 Sad' },
-  epic:      { label: '🔥 Epic' },
-  dreamy:    { label: '💭 Dreamy' },
-  tense:     { label: '⚡ Tense' },
-  nostalgic: { label: '🕰 Nostalgic' },
-  romantic:  { label: '💜 Romantic' },
-  groovy:    { label: '🕺 Groovy' },
-};
 
 const PROGRESSIONS = {
   major: [
@@ -270,7 +404,7 @@ function barreShape(rootPitch, quality) {
       frets: shape.map(v => v === -1 ? -1 : v + f),
       barre: f > 0 ? { fret: f, from: 0, to: 5 } : null,
       baseFretHint: f,
-      shapeName: 'E' + (quality === 'min' ? 'm' : '') + '-shape',
+      shapeName: quality === 'min' ? t('shapeEm') : t('shapeE'),
     };
   } else {
     const f = fretFromA;
@@ -279,7 +413,7 @@ function barreShape(rootPitch, quality) {
       frets: shape.map(v => v === -1 ? -1 : v + f),
       barre: f > 0 ? { fret: f, from: 1, to: 5 } : null,
       baseFretHint: f,
-      shapeName: 'A' + (quality === 'min' ? 'm' : '') + '-shape',
+      shapeName: quality === 'min' ? t('shapeAm') : t('shapeA'),
     };
   }
 }
@@ -289,10 +423,10 @@ function powerChordShape(rootPitch) {
   const fretFromA = ((rootPitch - 9) % 12 + 12) % 12;
   if (fretFromE <= fretFromA) {
     const f = fretFromE;
-    return { frets: [f, f + 2, f + 2, -1, -1, -1], baseFretHint: f, shapeName: 'power chord (low E string)' };
+    return { frets: [f, f + 2, f + 2, -1, -1, -1], baseFretHint: f, shapeName: t('powerLowE') };
   } else {
     const f = fretFromA;
-    return { frets: [-1, f, f + 2, f + 2, -1, -1], baseFretHint: f, shapeName: 'power chord (A string)' };
+    return { frets: [-1, f, f + 2, f + 2, -1, -1], baseFretHint: f, shapeName: t('powerA') };
   }
 }
 
@@ -313,11 +447,11 @@ function resolveGuitarShape(targetRoot, quality, capoFret, style) {
   if (OPEN_SHAPES[key]) {
     const s = OPEN_SHAPES[key];
     const shapeChordName = noteName(shapeRoot) + qualitySuffix(quality);
-    return finalizeDiagram(s.frets, null, shapeChordName, 'open', capoFret, false);
+    return finalizeDiagram(s.frets, null, shapeChordName, t('voicingOpen'), capoFret, false);
   }
   const b = barreShape(shapeRoot, quality);
   const shapeChordName = noteName(shapeRoot) + qualitySuffix(quality);
-  return finalizeDiagram(b.frets, b.barre, shapeChordName, 'barre, ' + b.shapeName, capoFret, false);
+  return finalizeDiagram(b.frets, b.barre, shapeChordName, t('voicingBarre', b.shapeName), capoFret, false);
 }
 
 function finalizeDiagram(frets, barre, shapeChordName, voicingType, capoFret, isPower) {
@@ -393,13 +527,13 @@ function renderChordSVG(shape) {
 const WHITE_PC = [0,2,4,5,7,9,11];
 const BLACK_PC = new Set([1,3,6,8,10]);
 
-function renderPianoSVG(highlightSet, rootPc, nameMap) {
+function renderPianoSVG(highlightSet, rootPc, nameMap, opts) {
   // highlightSet: Set of pitch classes to highlight, rootPc: pitch class treated as root (distinct color)
   // nameMap: pitch -> correctly-spelled note name for the current key (falls back to noteName())
+  const o = Object.assign({ octaves: 2, whiteW: 34, whiteH: 130, blackW: 20, blackH: 82, showAllLabels: true }, opts);
   const label = pc => (nameMap && nameMap.get(pc)) || noteName(pc);
   const startOctaveSemitone = 0; // start at C
-  const totalSemitones = 25; // 2 octaves inclusive (C..C..C)
-  const whiteW = 34, whiteH = 130, blackW = 20, blackH = 82;
+  const totalSemitones = o.octaves * 12 + 1; // N octaves inclusive (C..C)
 
   let whiteIndex = 0;
   const whiteRects = [];
@@ -408,33 +542,37 @@ function renderPianoSVG(highlightSet, rootPc, nameMap) {
   for (let s = 0; s <= totalSemitones; s++) {
     const pc = ((startOctaveSemitone + s) % 12 + 12) % 12;
     if (BLACK_PC.has(pc)) {
-      const x = whiteIndex * whiteW - blackW / 2;
+      const x = whiteIndex * o.whiteW - o.blackW / 2;
       blackRects.push({ x, pc });
     } else {
-      whiteRects.push({ x: whiteIndex * whiteW, pc });
+      whiteRects.push({ x: whiteIndex * o.whiteW, pc });
       whiteIndex++;
     }
   }
 
-  const totalWidth = whiteIndex * whiteW;
-  let svg = `<svg viewBox="0 0 ${totalWidth} ${whiteH + 4}" width="${totalWidth}" height="${whiteH + 4}" xmlns="http://www.w3.org/2000/svg">`;
+  const totalWidth = whiteIndex * o.whiteW;
+  let svg = `<svg viewBox="0 0 ${totalWidth} ${o.whiteH + 4}" width="${totalWidth}" height="${o.whiteH + 4}" xmlns="http://www.w3.org/2000/svg">`;
 
   whiteRects.forEach(k => {
     const isHi = highlightSet.has(k.pc);
     const isRoot = isHi && k.pc === rootPc;
     const fill = isRoot ? 'var(--root-color)' : (isHi ? 'var(--accent)' : '#f4f4f6');
-    svg += `<rect x="${k.x}" y="0" width="${whiteW - 1.5}" height="${whiteH}" rx="3" fill="${fill}" stroke="#0002" stroke-width="1"/>`;
-    const labelColor = isHi ? '#10131a' : '#556';
-    svg += `<text x="${k.x + (whiteW - 1.5) / 2}" y="${whiteH - 10}" font-size="10.5" text-anchor="middle" fill="${labelColor}" font-weight="${isHi ? 700 : 400}">${label(k.pc)}</text>`;
+    svg += `<rect x="${k.x}" y="0" width="${o.whiteW - 1.5}" height="${o.whiteH}" rx="3" fill="${fill}" stroke="#0002" stroke-width="1"/>`;
+    if (o.showAllLabels || isHi) {
+      const labelColor = isHi ? '#10131a' : '#556';
+      const fontSize = o.whiteW < 26 ? 8 : 10.5;
+      svg += `<text x="${k.x + (o.whiteW - 1.5) / 2}" y="${o.whiteH - 10}" font-size="${fontSize}" text-anchor="middle" fill="${labelColor}" font-weight="${isHi ? 700 : 400}">${label(k.pc)}</text>`;
+    }
   });
 
   blackRects.forEach(k => {
     const isHi = highlightSet.has(k.pc);
     const isRoot = isHi && k.pc === rootPc;
     const fill = isRoot ? 'var(--root-color)' : (isHi ? 'var(--accent-2)' : '#1a1c22');
-    svg += `<rect x="${k.x}" y="0" width="${blackW}" height="${blackH}" rx="2" fill="${fill}" stroke="#0004" stroke-width="1"/>`;
+    svg += `<rect x="${k.x}" y="0" width="${o.blackW}" height="${o.blackH}" rx="2" fill="${fill}" stroke="#0004" stroke-width="1"/>`;
     if (isHi) {
-      svg += `<text x="${k.x + blackW / 2}" y="${blackH - 8}" font-size="8.5" text-anchor="middle" fill="#10131a" font-weight="700">${label(k.pc)}</text>`;
+      const fontSize = o.blackW < 16 ? 7 : 8.5;
+      svg += `<text x="${k.x + o.blackW / 2}" y="${o.blackH - 8}" font-size="${fontSize}" text-anchor="middle" fill="#10131a" font-weight="700">${label(k.pc)}</text>`;
     }
   });
 
@@ -493,10 +631,9 @@ function renderFretboardSVG(rootPc, keySet, keyMap, capoFret) {
 
   // capo bar
   if (capoFret > 0) {
-    const x = left + capoFret * fretGap - fretGap / 2 + fretGap / 2;
     const xCapo = left + capoFret * fretGap;
     svg += `<rect x="${xCapo - 3}" y="${top - 8}" width="6" height="${5 * stringGap + 16}" rx="3" fill="var(--root-color)" opacity="0.9"/>`;
-    svg += `<text x="${xCapo}" y="${top - 12}" font-size="10" text-anchor="middle" fill="var(--root-color)">capo</text>`;
+    svg += `<text x="${xCapo}" y="${top - 12}" font-size="10" text-anchor="middle" fill="var(--root-color)">${t('capoWord')}</text>`;
   }
 
   // fret number labels
@@ -534,8 +671,8 @@ function renderFretboardScale() {
 
   container.innerHTML = renderFretboardSVG(state.root, keySet, keyMap, state.capo);
   info.textContent = state.capo > 0
-    ? `${spell(state.root)} ${state.mode === 'major' ? 'major' : 'minor'} — actual sounding notes; the dimmed zone before the capo (fret ${state.capo}) is unplayable`
-    : `${spell(state.root)} ${state.mode === 'major' ? 'major' : 'minor'} across the whole neck`;
+    ? t('fretboardCapoInfo', spell(state.root), modeWord(state.mode), state.capo)
+    : t('fretboardInfo', spell(state.root), modeWord(state.mode));
 }
 
 function renderSubstitutions() {
@@ -572,7 +709,7 @@ function renderSubstitutions() {
     if (chord.isSubstituted) {
       const resetChip = document.createElement('button');
       resetChip.className = 'sub-chip reset';
-      resetChip.textContent = `↺ revert to ${base.name}`;
+      resetChip.textContent = t('revertTo', base.name);
       resetChip.addEventListener('click', () => resetSubstitute(idx));
       optionsDiv.appendChild(resetChip);
     }
@@ -613,11 +750,13 @@ function resetSubstitute(idx) {
 // ---------- App state & wiring ----------
 
 const state = {
+  lang: 'en',
   root: 0,
   mode: 'major',
   mood: 'all',
   capo: 0,
   style: 'acoustic',
+  chordView: 'guitar', // 'guitar' | 'piano'
   progression: null,       // array of chord objects
   progressionLabel: '',
   selectedChordIndex: null,
@@ -634,23 +773,34 @@ function populateSelects() {
   });
   rootSelect.value = state.root;
 
+  updateCapoOptions();
+  updateMoodOptions();
+}
+
+function updateCapoOptions() {
   const capoSelect = document.getElementById('capoSelect');
+  const prevValue = capoSelect.value;
+  capoSelect.innerHTML = '';
   for (let i = 0; i <= 7; i++) {
     const opt = document.createElement('option');
     opt.value = i;
-    opt.textContent = i === 0 ? 'No capo' : `Fret ${i}`;
+    opt.textContent = i === 0 ? t('noCapo') : t('fretN', i);
     capoSelect.appendChild(opt);
   }
-  capoSelect.value = state.capo;
+  capoSelect.value = prevValue || state.capo;
+}
 
+function updateMoodOptions() {
   const moodSelect = document.getElementById('moodSelect');
-  Object.entries(MOODS).forEach(([key, m]) => {
+  const prevValue = moodSelect.value;
+  moodSelect.innerHTML = '';
+  MOOD_KEYS.forEach(key => {
     const opt = document.createElement('option');
     opt.value = key;
-    opt.textContent = m.label;
+    opt.textContent = moodLabel(key);
     moodSelect.appendChild(opt);
   });
-  moodSelect.value = state.mood;
+  moodSelect.value = prevValue || state.mood;
 }
 
 function renderProgressionList() {
@@ -662,7 +812,7 @@ function renderProgressionList() {
   if (state.mood !== 'all' && list === fullList) {
     const note = document.createElement('div');
     note.className = 'mood-empty-note';
-    note.textContent = `No progressions tagged "${MOODS[state.mood].label.replace(/^\S+\s/, '')}" in this mode — showing all instead.`;
+    note.textContent = t('moodEmptyNote', moodLabel(state.mood).replace(/^\S+\s/, ''));
     container.appendChild(note);
   }
 
@@ -670,7 +820,7 @@ function renderProgressionList() {
     const chords = progressionToChords(state.root, state.mode, entry.pattern);
     const div = document.createElement('div');
     div.className = 'prog-item';
-    const moodTags = entry.moods.map(m => `<span class="prog-mood">${MOODS[m].label}</span>`).join('');
+    const moodTags = entry.moods.map(m => `<span class="prog-mood">${moodLabel(m)}</span>`).join('');
     div.innerHTML = `<div>${chords.map(c => c.name).join(' – ')}</div>
       <div class="roman">${chords.map(c => c.roman).join(' – ')}</div>
       <div class="prog-moods">${moodTags}</div>`;
@@ -698,7 +848,7 @@ function updateActiveProgItem() {
     el.classList.toggle('active', roman === state.progressionLabel);
   });
   document.getElementById('currentProgLabel').textContent = state.progressionLabel
-    ? `${noteName(state.root)} ${state.mode === 'major' ? 'major' : 'minor'} · ${state.progressionLabel}`
+    ? `${noteName(state.root)} ${modeWord(state.mode)} · ${state.progressionLabel}`
     : '';
 }
 
@@ -706,21 +856,36 @@ function renderChordCards() {
   const container = document.getElementById('chordCards');
   container.innerHTML = '';
   if (!state.progression) return;
+  const keyMap = buildKeyNoteMap(state.root, state.mode);
 
   state.progression.forEach((chord, idx) => {
-    const shape = resolveGuitarShape(chord.root, chord.quality, state.capo, state.style);
-    const title = shape.shapeChordName === chord.name
-      ? chord.name
-      : `${shape.shapeChordName} <span class="creal">(${chord.name})</span>`;
     const card = document.createElement('div');
     card.className = 'chord-card' + (state.selectedChordIndex === idx ? ' selected' : '');
-    const romanLine = chord.isSubstituted ? `${chord.roman} <span class="csub-badge">sub</span>` : chord.roman;
-    card.innerHTML = `
-      <div class="cname">${title}</div>
-      <div class="croman">${romanLine}</div>
-      ${renderChordSVG(shape)}
-      <div class="cshape-label">${shape.voicingType}</div>
-    `;
+    const romanLine = chord.isSubstituted ? `${chord.roman} <span class="csub-badge">${t('subBadge')}</span>` : chord.roman;
+
+    if (state.chordView === 'piano') {
+      const notes = CHORD_INTERVALS[chord.quality].map(iv => (chord.root + iv) % 12);
+      const notesList = notes.map(pc => keyMap.get(pc) || noteName(pc)).join(', ');
+      const pianoSvg = renderPianoSVG(new Set(notes), chord.root, keyMap, { octaves: 1, whiteW: 18, whiteH: 82, blackW: 11, blackH: 52, showAllLabels: false });
+      card.innerHTML = `
+        <div class="cname">${chord.name}</div>
+        <div class="croman">${romanLine}</div>
+        <div class="card-piano">${pianoSvg}</div>
+        <div class="cshape-label">${t('notesLabel', notesList)}</div>
+      `;
+    } else {
+      const shape = resolveGuitarShape(chord.root, chord.quality, state.capo, state.style);
+      const title = shape.shapeChordName === chord.name
+        ? chord.name
+        : `${shape.shapeChordName} <span class="creal">(${chord.name})</span>`;
+      card.innerHTML = `
+        <div class="cname">${title}</div>
+        <div class="croman">${romanLine}</div>
+        ${renderChordSVG(shape)}
+        <div class="cshape-label">${shape.voicingType}</div>
+      `;
+    }
+
     card.addEventListener('click', () => {
       state.selectedChordIndex = idx;
       state.showScale = false;
@@ -744,13 +909,13 @@ function renderPiano() {
     const scale = SCALE_INTERVALS[state.mode].map(iv => (state.root + iv) % 12);
     highlightSet = new Set(scale);
     rootPc = state.root;
-    info.textContent = `Scale: ${spell(state.root)} ${state.mode === 'major' ? 'major' : 'minor'} — ${scale.map(spell).join(', ')}`;
+    info.textContent = t('pianoScaleInfo', spell(state.root), modeWord(state.mode), scale.map(spell).join(', '));
   } else if (state.progression) {
     const chord = state.progression[state.selectedChordIndex];
     const notes = CHORD_INTERVALS[chord.quality].map(iv => (chord.root + iv) % 12);
     highlightSet = new Set(notes);
     rootPc = chord.root;
-    info.textContent = `Chord: ${chord.name} — notes ${notes.map(spell).join(', ')}`;
+    info.textContent = t('pianoChordInfo', chord.name, notes.map(spell).join(', '));
   }
 
   container.innerHTML = renderPianoSVG(highlightSet, rootPc, keyMap);
@@ -768,6 +933,12 @@ function refreshAll() {
     setProgression(chords, chords.map(c => c.roman).join(' – '));
   }
   renderFretboardScale();
+}
+
+function setChordViewVisibility() {
+  const isGuitar = state.chordView === 'guitar';
+  document.getElementById('capoGroup').classList.toggle('hidden', !isGuitar);
+  document.getElementById('voicingGroup').classList.toggle('hidden', !isGuitar);
 }
 
 function wireEvents() {
@@ -789,12 +960,31 @@ function wireEvents() {
     state.mood = e.target.value;
     renderProgressionList();
   });
-  document.querySelectorAll('.seg-btn').forEach(btn => {
+  document.querySelectorAll('#styleToggle .seg-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#styleToggle .seg-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       state.style = btn.dataset.style;
       renderChordCards();
+    });
+  });
+  document.querySelectorAll('#chordViewToggle .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#chordViewToggle .seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.chordView = btn.dataset.view;
+      setChordViewVisibility();
+      renderChordCards();
+    });
+  });
+  document.querySelectorAll('#langToggle .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.lang === state.lang) return;
+      state.lang = btn.dataset.lang;
+      applyStaticI18n();
+      updateCapoOptions();
+      updateMoodOptions();
+      refreshAll();
     });
   });
   document.getElementById('randomBtn').addEventListener('click', () => {
@@ -820,6 +1010,8 @@ function wireEvents() {
   });
 }
 
+applyStaticI18n();
 populateSelects();
+setChordViewVisibility();
 wireEvents();
 refreshAll();

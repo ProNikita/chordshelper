@@ -28,6 +28,13 @@ body {
   padding: 24px 20px 60px;
 }
 
+.topbar-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
 .topbar h1 {
   margin: 0 0 2px;
   font-size: 26px;
@@ -37,6 +44,13 @@ body {
   margin: 0 0 24px;
   color: var(--text-dim);
   font-size: 14px;
+}
+.lang-toggle {
+  flex-shrink: 0;
+}
+
+.hidden {
+  display: none !important;
 }
 
 .layout {
@@ -236,6 +250,14 @@ select {
 .chord-card.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
+}
+.chord-card svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.card-piano {
+  margin: 10px 0 6px;
 }
 .chord-card .cname {
   font-size: 18px;

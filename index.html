@@ -10,8 +10,16 @@
 <div class="app">
 
   <header class="topbar">
-    <h1>Chord Companion</h1>
-    <p class="subtitle">a songwriting &amp; melody-writing assistant</p>
+    <div class="topbar-row">
+      <div>
+        <h1>Chord Companion</h1>
+        <p class="subtitle" data-i18n="subtitle">a songwriting &amp; melody-writing assistant</p>
+      </div>
+      <div class="segmented lang-toggle" id="langToggle">
+        <button class="seg-btn active" data-lang="en">EN</button>
+        <button class="seg-btn" data-lang="ru">RU</button>
+      </div>
+    </div>
   </header>
 
   <div class="layout">
@@ -19,46 +27,54 @@
     <aside class="sidebar">
 
       <section class="panel">
-        <h2>Settings</h2>
+        <h2 data-i18n="settingsTitle">Settings</h2>
         <div class="controls">
           <div class="control-group">
-            <label>Key</label>
+            <label data-i18n="keyLabel">Key</label>
             <div class="row">
               <select id="rootSelect"></select>
               <select id="modeSelect">
-                <option value="major">Major</option>
-                <option value="minor">Minor</option>
+                <option value="major" data-i18n="major">Major</option>
+                <option value="minor" data-i18n="minor">Minor</option>
               </select>
             </div>
           </div>
 
           <div class="control-group">
-            <label>Progression mood</label>
+            <label data-i18n="moodLabel">Progression mood</label>
             <select id="moodSelect"></select>
           </div>
 
           <div class="control-group">
-            <label>Capo</label>
+            <label data-i18n="chordViewLabel">Chord diagrams</label>
+            <div class="segmented" id="chordViewToggle">
+              <button class="seg-btn active" data-view="guitar" data-i18n="guitar">Guitar</button>
+              <button class="seg-btn" data-view="piano" data-i18n="piano">Piano</button>
+            </div>
+          </div>
+
+          <div class="control-group" id="capoGroup">
+            <label data-i18n="capoLabel">Capo</label>
             <select id="capoSelect"></select>
           </div>
 
-          <div class="control-group">
-            <label>Chord voicing (guitar)</label>
+          <div class="control-group" id="voicingGroup">
+            <label data-i18n="voicingLabel">Chord voicing (guitar)</label>
             <div class="segmented" id="styleToggle">
-              <button class="seg-btn active" data-style="acoustic">Acoustic</button>
-              <button class="seg-btn" data-style="electric">Electric</button>
+              <button class="seg-btn active" data-style="acoustic" data-i18n="acoustic">Acoustic</button>
+              <button class="seg-btn" data-style="electric" data-i18n="electric">Electric</button>
             </div>
           </div>
 
           <div class="control-group actions">
-            <button id="randomBtn" class="btn primary">🎲 Random progression</button>
-            <button id="surpriseBtn" class="btn">🎲 Surprise me (any key)</button>
+            <button id="randomBtn" class="btn primary" data-i18n="randomBtn">🎲 Random progression</button>
+            <button id="surpriseBtn" class="btn" data-i18n="surpriseBtn">🎲 Surprise me (any key)</button>
           </div>
         </div>
       </section>
 
       <section class="panel">
-        <h2>Progressions in this key</h2>
+        <h2 data-i18n="progressionsInKey">Progressions in this key</h2>
         <div id="progressionList" class="progression-list"></div>
       </section>
 
@@ -68,7 +84,7 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Current progression</h2>
+          <h2 data-i18n="currentProgression">Current progression</h2>
           <span id="currentProgLabel" class="prog-label"></span>
         </div>
         <div id="chordCards" class="chord-cards"></div>
@@ -76,17 +92,17 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Chord substitutions</h2>
-          <span class="prog-label">so the progression doesn't sound monotonous</span>
+          <h2 data-i18n="chordSubstitutions">Chord substitutions</h2>
+          <span class="prog-label" data-i18n="chordSubstitutionsSub">so the progression doesn't sound monotonous</span>
         </div>
         <div id="subsContainer" class="subs-container"></div>
       </section>
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Piano</h2>
+          <h2 data-i18n="pianoTitle">Piano</h2>
           <div class="piano-toggle">
-            <button id="showScaleBtn" class="btn small active">Show scale</button>
+            <button id="showScaleBtn" class="btn small active" data-i18n="showScale">Show scale</button>
             <span id="pianoInfo" class="piano-info"></span>
           </div>
         </div>
@@ -95,7 +111,7 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Scale on the guitar fretboard</h2>
+          <h2 data-i18n="fretboardTitle">Scale on the guitar fretboard</h2>
           <span id="fretboardInfo" class="piano-info"></span>
         </div>
         <div id="fretboardContainer" class="fretboard-container"></div>
@@ -106,7 +122,7 @@
   </div>
 
   <footer class="foot">
-    <p>Click a chord below to see its notes on the keyboard. Capo only changes the shape you finger on guitar — the actual sounding key and the piano keyboard don't change.</p>
+    <p data-i18n="footer">Click a chord below to see its notes on the keyboard. Capo only changes the shape you finger on guitar — the actual sounding key and the piano keyboard don't change.</p>
   </footer>
 
 </div>
