@@ -769,13 +769,13 @@ function midiToFreq(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-function playNoteAt(ctx, freq, when, duration) {
+function playNoteAt(ctx, freq, when, duration, peakGain = 0.15) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = 'triangle';
   osc.frequency.setValueAtTime(freq, when);
   gain.gain.setValueAtTime(0, when);
-  gain.gain.linearRampToValueAtTime(0.16, when + 0.02);
+  gain.gain.linearRampToValueAtTime(peakGain, when + 0.02);
   gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
   osc.connect(gain).connect(ctx.destination);
   osc.start(when);
@@ -786,16 +786,25 @@ function playNoteAt(ctx, freq, when, duration) {
   });
 }
 
-// close-position triad voicing starting around C3, so chords sound distinct but compact
+// Open voicing: root in the bass, fifth in the middle, third on top.
+// The third is what decides major vs minor — keeping it as the highest,
+// most exposed note (instead of sandwiched next to the root, where its
+// pitch gets masked by the root's own low harmonics) makes that call
+// obvious to the ear instead of ambiguous.
 function chordVoicing(chord) {
+  const iv = CHORD_INTERVALS[chord.quality];
   const rootMidi = 48 + chord.root;
-  return CHORD_INTERVALS[chord.quality].map(iv => rootMidi + iv);
+  return [
+    { midi: rootMidi, gain: 0.16 },          // root
+    { midi: rootMidi + iv[2], gain: 0.12 },  // fifth
+    { midi: rootMidi + iv[1] + 12, gain: 0.19 }, // third, an octave up
+  ];
 }
 
 function playChordNow(chord, duration = 1.1) {
   const ctx = getAudioContext();
   const now = ctx.currentTime;
-  chordVoicing(chord).forEach(midi => playNoteAt(ctx, midiToFreq(midi), now, duration));
+  chordVoicing(chord).forEach(v => playNoteAt(ctx, midiToFreq(v.midi), now, duration, v.gain));
 }
 
 function playNotesSequence(midiNotes, noteDuration = 0.32) {
