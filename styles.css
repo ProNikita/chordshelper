@@ -186,6 +186,40 @@ select {
   font-size: 13px;
 }
 
+.play-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.play-btn {
+  min-width: 96px;
+}
+.play-btn.playing {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #1a0e0e;
+}
+.bpm-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+.bpm-field input {
+  width: 58px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 6px;
+  font-size: 13px;
+}
+.bpm-unit {
+  font-size: 11px;
+}
+
 .progression-list {
   display: flex;
   flex-direction: column;
@@ -244,12 +278,39 @@ select {
   padding: 12px;
   width: 148px;
   cursor: pointer;
-  transition: border-color .15s;
+  transition: border-color .15s, box-shadow .15s;
+  position: relative;
 }
 .chord-card:hover { border-color: var(--accent-2); }
 .chord-card.selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
+}
+.chord-card.playing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 14px 1px rgba(110, 231, 194, 0.45);
+}
+.card-play-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 0 0 2px;
+}
+.card-play-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .chord-card svg {
   display: block;

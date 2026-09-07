@@ -28,6 +28,9 @@ const STRINGS = {
     showScale: 'Show scale',
     fretboardTitle: 'Scale on the guitar fretboard',
     footer: "Click a chord below to see its notes on the keyboard. Capo only changes the shape you finger on guitar — the actual sounding key and the piano keyboard don't change.",
+    play: '▶ Play',
+    stop: '■ Stop',
+    bpmLabel: 'Tempo',
     noCapo: 'No capo',
     fretN: n => `Fret ${n}`,
     capoWord: 'capo',
@@ -85,6 +88,9 @@ const STRINGS = {
     showScale: 'Показать гамму',
     fretboardTitle: 'Гамма на грифе гитары',
     footer: 'Кликните на аккорд ниже, чтобы увидеть его ноты на клавиатуре. Капо меняет только форму (аппликатуру) для гитары — реальная звучащая тональность и клавиатура пианино не меняются.',
+    play: '▶ Играть',
+    stop: '■ Стоп',
+    bpmLabel: 'Темп',
     noCapo: 'Без капо',
     fretN: n => `${n} лад`,
     capoWord: 'капо',
@@ -747,6 +753,121 @@ function resetSubstitute(idx) {
   renderPiano();
 }
 
+// ---------- Audio playback (Web Audio API) ----------
+
+let audioCtx = null;
+let playbackTimeouts = [];
+let activeOscillators = [];
+
+function getAudioContext() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function midiToFreq(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function playNoteAt(ctx, freq, when, duration) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(freq, when);
+  gain.gain.setValueAtTime(0, when);
+  gain.gain.linearRampToValueAtTime(0.16, when + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(when);
+  osc.stop(when + duration + 0.05);
+  activeOscillators.push(osc);
+  osc.addEventListener('ended', () => {
+    activeOscillators = activeOscillators.filter(o => o !== osc);
+  });
+}
+
+// close-position triad voicing starting around C3, so chords sound distinct but compact
+function chordVoicing(chord) {
+  const rootMidi = 48 + chord.root;
+  return CHORD_INTERVALS[chord.quality].map(iv => rootMidi + iv);
+}
+
+function playChordNow(chord, duration = 1.1) {
+  const ctx = getAudioContext();
+  const now = ctx.currentTime;
+  chordVoicing(chord).forEach(midi => playNoteAt(ctx, midiToFreq(midi), now, duration));
+}
+
+function playNotesSequence(midiNotes, noteDuration = 0.32) {
+  const ctx = getAudioContext();
+  const now = ctx.currentTime;
+  midiNotes.forEach((midi, i) => playNoteAt(ctx, midiToFreq(midi), now + i * noteDuration, noteDuration * 0.95));
+}
+
+function stopPlayback() {
+  playbackTimeouts.forEach(id => clearTimeout(id));
+  playbackTimeouts = [];
+  activeOscillators.forEach(o => { try { o.stop(); } catch (e) { /* already stopped */ } });
+  activeOscillators = [];
+  state.isPlaying = false;
+  updatePlayButtonUI();
+  clearPlayingHighlight();
+}
+
+function clearPlayingHighlight() {
+  document.querySelectorAll('.chord-card.playing').forEach(el => el.classList.remove('playing'));
+}
+
+function highlightPlayingCard(idx) {
+  clearPlayingHighlight();
+  const cards = document.querySelectorAll('.chord-card');
+  if (cards[idx]) cards[idx].classList.add('playing');
+}
+
+function updatePlayButtonUI() {
+  const btn = document.getElementById('playBtn');
+  btn.textContent = state.isPlaying ? t('stop') : t('play');
+  btn.classList.toggle('playing', state.isPlaying);
+}
+
+function togglePlayProgression() {
+  if (state.isPlaying) {
+    stopPlayback();
+    return;
+  }
+  if (!state.progression || !state.progression.length) return;
+  const ctx = getAudioContext();
+  state.isPlaying = true;
+  updatePlayButtonUI();
+  const bpm = Math.min(220, Math.max(40, parseInt(document.getElementById('bpmInput').value, 10) || 96));
+  const secondsPerChord = (60 / bpm) * 4; // one bar per chord
+
+  state.progression.forEach((chord, i) => {
+    const id = setTimeout(() => {
+      highlightPlayingCard(i);
+      playChordNow(chord, secondsPerChord * 0.92);
+    }, i * secondsPerChord * 1000);
+    playbackTimeouts.push(id);
+  });
+  const endId = setTimeout(() => {
+    state.isPlaying = false;
+    updatePlayButtonUI();
+    clearPlayingHighlight();
+  }, state.progression.length * secondsPerChord * 1000);
+  playbackTimeouts.push(endId);
+}
+
+function playPianoPanel() {
+  if (state.showScale || state.selectedChordIndex === null) {
+    const base = 60 + state.root;
+    const midiSeq = [...SCALE_INTERVALS[state.mode], 12].map(off => base + off);
+    playNotesSequence(midiSeq);
+  } else if (state.progression) {
+    const chord = state.progression[state.selectedChordIndex];
+    playChordNow(chord, 1.4);
+  }
+}
+
 // ---------- App state & wiring ----------
 
 const state = {
@@ -761,6 +882,7 @@ const state = {
   progressionLabel: '',
   selectedChordIndex: null,
   showScale: true,
+  isPlaying: false,
 };
 
 function populateSelects() {
@@ -832,6 +954,7 @@ function renderProgressionList() {
 }
 
 function setProgression(chords, label) {
+  stopPlayback();
   state.progression = chords;
   state.progressionLabel = label;
   state.selectedChordIndex = null;
@@ -885,6 +1008,19 @@ function renderChordCards() {
         <div class="cshape-label">${shape.voicingType}</div>
       `;
     }
+
+    const playBtn = document.createElement('button');
+    playBtn.className = 'card-play-btn';
+    playBtn.textContent = '▶';
+    playBtn.title = t('play');
+    playBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      stopPlayback();
+      playChordNow(chord, 1.1);
+      highlightPlayingCard(idx);
+      setTimeout(clearPlayingHighlight, 1100);
+    });
+    card.appendChild(playBtn);
 
     card.addEventListener('click', () => {
       state.selectedChordIndex = idx;
@@ -980,6 +1116,7 @@ function wireEvents() {
   document.querySelectorAll('#langToggle .seg-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.dataset.lang === state.lang) return;
+      stopPlayback();
       state.lang = btn.dataset.lang;
       applyStaticI18n();
       updateCapoOptions();
@@ -987,6 +1124,8 @@ function wireEvents() {
       refreshAll();
     });
   });
+  document.getElementById('playBtn').addEventListener('click', togglePlayProgression);
+  document.getElementById('pianoPlayBtn').addEventListener('click', playPianoPanel);
   document.getElementById('randomBtn').addEventListener('click', () => {
     const chords = randomProgression(state.root, state.mode, state.mood);
     setProgression(chords, chords.map(c => c.roman).join(' – '));

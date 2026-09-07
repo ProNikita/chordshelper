@@ -87,6 +87,14 @@
           <h2 data-i18n="currentProgression">Current progression</h2>
           <span id="currentProgLabel" class="prog-label"></span>
         </div>
+        <div class="play-bar">
+          <button id="playBtn" class="btn primary play-btn" data-i18n="play">▶ Play</button>
+          <label class="bpm-field">
+            <span data-i18n="bpmLabel">Tempo</span>
+            <input type="number" id="bpmInput" min="40" max="220" step="1" value="96">
+            <span class="bpm-unit">BPM</span>
+          </label>
+        </div>
         <div id="chordCards" class="chord-cards"></div>
       </section>
 
@@ -103,6 +111,7 @@
           <h2 data-i18n="pianoTitle">Piano</h2>
           <div class="piano-toggle">
             <button id="showScaleBtn" class="btn small active" data-i18n="showScale">Show scale</button>
+            <button id="pianoPlayBtn" class="btn small" data-i18n="play">▶ Play</button>
             <span id="pianoInfo" class="piano-info"></span>
           </div>
         </div>
