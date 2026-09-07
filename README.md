@@ -13,7 +13,7 @@ A songwriting and melody-writing assistant that runs entirely in the browser —
 - Scale and chord visualization on a labeled piano keyboard, with a 3-tier "safe melody note" guide over the selected chord
 - Chord substitution suggestions (relative substitutes, borrowed chords, secondary dominants) to keep a progression from sounding monotonous
 - Play the chord progression (adjustable tempo) through a built-in synth
-- Generate a melody, bass line, and drum pattern that fit the progression, play them back individually or together, and export everything as a real .mid file
+- Generate a melody, bass line, drum pattern, and a lead guitar tab (real string/fret positions, playable on the neck) that fit the progression, play any combination back, and export everything as a real .mid file
 
 ## Running it
 

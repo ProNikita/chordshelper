@@ -37,22 +37,25 @@ const STRINGS = {
     legendRoot: 'Root',
     legendChord: 'Chord tone',
     legendScale: 'Safe note',
-    melodyTitle: 'Melody, bass & drums generator',
-    melodySub: 'ideas to sing or play over this progression',
+    melodyTitle: 'Arrangement generator',
+    melodySub: 'melody, bass, drums & guitar tab for this progression',
     generateMelody: '🎲 Generate melody',
     generateBass: '🎸 Generate bass',
     generateDrums: '🥁 Generate drums',
+    generateTab: '🎼 Generate tab',
     playMelody: '▶ Play melody',
     playBass: '▶ Play bass',
     playDrums: '▶ Play drums',
+    playTab: '▶ Play tab',
     playAll: '▶ Play all',
     downloadMidi: '⬇ Download MIDI',
-    melodyPlaceholder: 'Click "Generate melody", "Generate bass", or "Generate drums" to create parts that fit this progression.',
+    melodyPlaceholder: 'Click "Generate melody", "Generate bass", "Generate drums", or "Generate tab" to create parts that fit this progression.',
     legendMelody: 'Melody',
     legendBass: 'Bass',
     removeMelody: 'Remove melody',
     removeBass: 'Remove bass',
     removeDrums: 'Remove drums',
+    removeTab: 'Remove tab',
     noCapo: 'No capo',
     fretN: n => `Fret ${n}`,
     capoWord: 'capo',
@@ -123,22 +126,25 @@ const STRINGS = {
     legendRoot: 'Тоника',
     legendChord: 'Тон аккорда',
     legendScale: 'Безопасная нота',
-    melodyTitle: 'Генератор мелодии, баса и барабанов',
-    melodySub: 'идеи для пения или соло поверх этой прогрессии',
+    melodyTitle: 'Генератор аранжировки',
+    melodySub: 'мелодия, бас, барабаны и табы для этой прогрессии',
     generateMelody: '🎲 Сгенерировать мелодию',
     generateBass: '🎸 Сгенерировать бас',
     generateDrums: '🥁 Сгенерировать барабаны',
+    generateTab: '🎼 Сгенерировать табы',
     playMelody: '▶ Играть мелодию',
     playBass: '▶ Играть бас',
     playDrums: '▶ Играть барабаны',
+    playTab: '▶ Играть табы',
     playAll: '▶ Играть всё',
     downloadMidi: '⬇ Скачать MIDI',
-    melodyPlaceholder: 'Нажми «Сгенерировать мелодию», «Сгенерировать бас» или «Сгенерировать барабаны», чтобы создать партии под эту прогрессию.',
+    melodyPlaceholder: 'Нажми «Сгенерировать мелодию», «Сгенерировать бас», «Сгенерировать барабаны» или «Сгенерировать табы», чтобы создать партии под эту прогрессию.',
     legendMelody: 'Мелодия',
     legendBass: 'Бас',
     removeMelody: 'Убрать мелодию',
     removeBass: 'Убрать бас',
     removeDrums: 'Убрать барабаны',
+    removeTab: 'Убрать табы',
     noCapo: 'Без капо',
     fretN: n => `${n} лад`,
     capoWord: 'капо',
@@ -1068,6 +1074,7 @@ function updateAllPlayButtonsUI() {
   setPlayBtnState(document.getElementById('melodyPlayBtn'), state.activePlayer === 'melody', 'playMelody');
   setPlayBtnState(document.getElementById('bassPlayBtn'), state.activePlayer === 'bass', 'playBass');
   setPlayBtnState(document.getElementById('drumsPlayBtn'), state.activePlayer === 'drums', 'playDrums');
+  setPlayBtnState(document.getElementById('tabPlayBtn'), state.activePlayer === 'tab', 'playTab');
   setPlayBtnState(document.getElementById('playAllBtn'), state.activePlayer === 'all', 'playAll');
 }
 
@@ -1106,6 +1113,10 @@ function scheduleBassPlayback(bpm) {
   return scheduleNotesPlayback(state.bass, bpm, 'sine', 0.22);
 }
 
+function scheduleTabPlayback(bpm) {
+  return scheduleNotesPlayback(state.tab, bpm, 'sawtooth', 0.13);
+}
+
 function scheduleDrumsPlayback(bpm) {
   const secPerBeat = 60 / bpm;
   let maxEnd = 0;
@@ -1128,7 +1139,8 @@ function togglePlayer(kind) {
   if (kind === 'melody' && !state.melody) return;
   if (kind === 'bass' && !state.bass) return;
   if (kind === 'drums' && !state.drums) return;
-  if (kind === 'all' && !state.melody && !state.bass && !state.drums) return;
+  if (kind === 'tab' && !state.tab) return;
+  if (kind === 'all' && !state.melody && !state.bass && !state.drums && !state.tab) return;
   stopPlayback();
   getAudioContext();
   state.activePlayer = kind;
@@ -1144,11 +1156,14 @@ function togglePlayer(kind) {
     totalSeconds = scheduleBassPlayback(bpm);
   } else if (kind === 'drums') {
     totalSeconds = scheduleDrumsPlayback(bpm);
+  } else if (kind === 'tab') {
+    totalSeconds = scheduleTabPlayback(bpm);
   } else if (kind === 'all') {
     const ends = [scheduleChordsPlayback(bpm)];
     if (state.melody) ends.push(scheduleMelodyPlayback(bpm));
     if (state.bass) ends.push(scheduleBassPlayback(bpm));
     if (state.drums) ends.push(scheduleDrumsPlayback(bpm));
+    if (state.tab) ends.push(scheduleTabPlayback(bpm));
     totalSeconds = Math.max(...ends);
   }
 
@@ -1401,34 +1416,161 @@ function renderDrumSVG(drums, progression) {
   return svg;
 }
 
+// ---------- Guitar tab generator ----------
+// A single-note lead line — same note-choice logic as the melody generator
+// (chord tones anchor the downbeat, scale tones fill passing beats, every
+// pitch lands in whichever octave keeps it close to the last note, real
+// rhythmic variety from held notes down to rests) but mapped onto actual
+// string+fret positions on the neck, favoring whichever string keeps the
+// hand near its previous position — so it reads like a simple solo/riff
+// instead of an arpeggio mechanically bouncing across the chord shape.
+
+const STRING_OPEN_MIDI = [40, 45, 50, 55, 59, 64]; // low E,A,D,G,B,e in standard tuning
+const TAB_MIN = 45, TAB_MAX = 69; // A2–A4 — an easy-going riff/lead register with room on every string
+
+// Choose the string+fret for a target pitch that keeps the *fret* close to
+// wherever the hand already is — real lead lines move across adjacent
+// strings within roughly the same few frets ("position playing"), not up
+// and down a single string. A mild penalty for higher frets keeps the line
+// in a comfortable, common range instead of drifting toward the top of the
+// neck, and caps out at fret 12 so it never needs an uncomfortable stretch.
+function pickStringFret(midi, prevFret, prevString, capo) {
+  let best = null, bestScore = Infinity;
+  for (let s = 0; s < 6; s++) {
+    const fret = midi - STRING_OPEN_MIDI[s] - capo;
+    if (fret < 0 || fret > 12) continue;
+    const fretDist = prevFret == null ? Math.abs(fret - 3) : Math.abs(fret - prevFret);
+    const stringJump = prevString == null ? 0 : Math.abs(s - prevString) * 0.3;
+    const highFretPenalty = fret > 7 ? (fret - 7) * 0.35 : 0;
+    const score = fretDist * 1.5 + stringJump + highFretPenalty;
+    if (score < bestScore) { bestScore = score; best = { string: s, fret }; }
+  }
+  return best;
+}
+
+function generateGuitarTab(progression, keyRoot, mode, capo) {
+  const scalePcs = SCALE_INTERVALS[mode].map(iv => (keyRoot + iv) % 12);
+  const events = [];
+  let beatCursor = 0;
+  let prevMidi = nearestOctaveNote(keyRoot, 67, TAB_MIN, TAB_MAX);
+  let prevFret = null;
+  let prevString = null;
+
+  progression.forEach((chord, barIdx) => {
+    const chordPcs = CHORD_INTERVALS[chord.quality].map(iv => (chord.root + iv) % 12);
+    const pattern = RHYTHM_PATTERNS[Math.floor(Math.random() * RHYTHM_PATTERNS.length)];
+    const isLastBar = barIdx === progression.length - 1;
+
+    pattern.forEach((dur, i) => {
+      const isDownbeat = i === 0;
+      const isFinalNote = isLastBar && i === pattern.length - 1;
+
+      if (!isDownbeat && !isFinalNote && Math.random() < 0.12) {
+        beatCursor += dur; // rest — breathing room instead of nonstop notes
+        return;
+      }
+
+      let midi;
+      if (isFinalNote) {
+        midi = nearestOctaveNote(keyRoot, prevMidi, TAB_MIN, TAB_MAX); // resolve to the tonic
+      } else if (isDownbeat) {
+        const r = Math.random();
+        const targetPc = r < 0.45 ? chordPcs[0] : r < 0.8 ? chordPcs[1] : chordPcs[2];
+        midi = nearestOctaveNote(targetPc, prevMidi, TAB_MIN, TAB_MAX);
+      } else {
+        const pool = Math.random() < 0.55 ? chordPcs : scalePcs;
+        const candidates = pool
+          .map(pc => nearestOctaveNote(pc, prevMidi, TAB_MIN, TAB_MAX))
+          .sort((a, b) => Math.abs(a - prevMidi) - Math.abs(b - prevMidi));
+        midi = candidates[Math.floor(Math.random() * Math.min(2, candidates.length))];
+      }
+
+      const pos = pickStringFret(midi, prevFret, prevString, capo);
+      if (!pos) { beatCursor += dur; return; } // out of playable range, skip this note
+
+      events.push({ startBeat: beatCursor, duration: dur, string: pos.string, fret: pos.fret, midi });
+      prevMidi = midi;
+      prevFret = pos.fret;
+      prevString = pos.string;
+      beatCursor += dur;
+    });
+  });
+
+  return events;
+}
+
+function renderTabSVG(tab, progression, keyRoot) {
+  const beatW = 26, rowH = 14;
+  const totalBeats = progression.length * 4;
+  const left = 14, top = 22;
+  const w = left + totalBeats * beatW + 4;
+  const h = top + 6 * rowH + 6;
+  const stringLabels = ['e', 'B', 'G', 'D', 'A', 'E']; // high to low, top to bottom (standard tab order)
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">`;
+
+  progression.forEach((chord, i) => {
+    const x = left + i * 4 * beatW;
+    svg += `<line x1="${x}" y1="${top}" x2="${x}" y2="${h - 4}" stroke="var(--border)" stroke-width="1"/>`;
+    svg += `<text x="${x + 4}" y="14" font-size="11" fill="var(--text-dim)" font-weight="600">${chord.name}</text>`;
+  });
+  svg += `<line x1="${left + totalBeats * beatW}" y1="${top}" x2="${left + totalBeats * beatW}" y2="${h - 4}" stroke="var(--border)" stroke-width="1"/>`;
+
+  stringLabels.forEach((label, i) => {
+    const y = top + i * rowH + rowH / 2;
+    svg += `<text x="0" y="${y + 3}" font-size="9" fill="var(--text-dim)" font-weight="600">${label}</text>`;
+    svg += `<line x1="${left}" y1="${y}" x2="${left + totalBeats * beatW}" y2="${y}" stroke="var(--border)" stroke-width="0.75"/>`;
+  });
+
+  tab.forEach(ev => {
+    const rowIdx = 5 - ev.string; // string5=high e drawn on top
+    const x = left + ev.startBeat * beatW;
+    const y = top + rowIdx * rowH + rowH / 2;
+    const isRoot = ((ev.midi % 12) + 12) % 12 === keyRoot;
+    const fill = isRoot ? 'var(--root-color)' : 'var(--accent)';
+    svg += `<rect x="${x - 8}" y="${y - 7}" width="16" height="14" rx="3" fill="${fill}"/>`;
+    svg += `<text x="${x}" y="${y + 3.5}" font-size="9" text-anchor="middle" fill="#10131a" font-weight="700">${ev.fret}</text>`;
+  });
+
+  svg += `</svg>`;
+  return svg;
+}
+
 function renderMelodyPanel() {
   const container = document.getElementById('melodyContainer');
   const drumsContainer = document.getElementById('drumsContainer');
+  const tabContainer = document.getElementById('tabContainer');
   const melodyPlayBtn = document.getElementById('melodyPlayBtn');
   const bassPlayBtn = document.getElementById('bassPlayBtn');
   const drumsPlayBtn = document.getElementById('drumsPlayBtn');
+  const tabPlayBtn = document.getElementById('tabPlayBtn');
   const playAllBtn = document.getElementById('playAllBtn');
   const downloadBtn = document.getElementById('downloadMidiBtn');
   const removeMelodyBtn = document.getElementById('removeMelodyBtn');
   const removeBassBtn = document.getElementById('removeBassBtn');
   const removeDrumsBtn = document.getElementById('removeDrumsBtn');
+  const removeTabBtn = document.getElementById('removeTabBtn');
 
-  const hasAny = state.melody || state.bass || state.drums;
+  const hasAny = state.melody || state.bass || state.drums || state.tab;
   melodyPlayBtn.disabled = !state.melody;
   bassPlayBtn.disabled = !state.bass;
   drumsPlayBtn.disabled = !state.drums;
+  tabPlayBtn.disabled = !state.tab;
   playAllBtn.disabled = !hasAny;
   downloadBtn.disabled = !hasAny;
   removeMelodyBtn.disabled = !state.melody;
   removeBassBtn.disabled = !state.bass;
   removeDrumsBtn.disabled = !state.drums;
+  removeTabBtn.disabled = !state.tab;
   removeMelodyBtn.title = t('removeMelody');
   removeBassBtn.title = t('removeBass');
   removeDrumsBtn.title = t('removeDrums');
+  removeTabBtn.title = t('removeTab');
 
   if (!hasAny) {
     container.innerHTML = `<p class="melody-placeholder">${t('melodyPlaceholder')}</p>`;
     drumsContainer.innerHTML = '';
+    tabContainer.innerHTML = '';
     return;
   }
   container.innerHTML = (state.melody || state.bass)
@@ -1437,12 +1579,22 @@ function renderMelodyPanel() {
   drumsContainer.innerHTML = state.drums
     ? `<div class="melody-roll">${renderDrumSVG(state.drums, state.progression)}</div>`
     : '';
+  tabContainer.innerHTML = state.tab
+    ? `<div class="melody-roll">${renderTabSVG(state.tab, state.progression, state.root)}</div>`
+    : '';
 }
 
 function regenerateMelody() {
   if (!state.progression || !state.progression.length) return;
   stopPlayback();
   state.melody = generateMelody(state.progression, state.root, state.mode);
+  renderMelodyPanel();
+}
+
+function regenerateTab() {
+  if (!state.progression || !state.progression.length) return;
+  stopPlayback();
+  state.tab = generateGuitarTab(state.progression, state.root, state.mode, state.capo);
   renderMelodyPanel();
 }
 
@@ -1485,9 +1637,9 @@ function midiVarLen(value) {
 
 // General MIDI program numbers so a DAW picks a sensible sound per channel
 // without the user having to reassign instruments by hand.
-const GM_PROGRAM = { chords: 0, melody: 80, bass: 33 }; // Acoustic Grand, Lead 1 (square), Electric Bass (finger)
+const GM_PROGRAM = { chords: 0, melody: 80, bass: 33, tabAcoustic: 25, tabElectric: 27 };
 
-function buildMidiFile(progression, melody, bass, drums, bpm) {
+function buildMidiFile(progression, melody, bass, drums, tab, tabStyle, bpm) {
   const PPQ = 480;
   const barTicks = PPQ * 4;
   const events = []; // {tick, on, note, velocity, channel}
@@ -1524,6 +1676,13 @@ function buildMidiFile(progression, melody, bass, drums, bpm) {
     events.push({ tick: startTick + dur, on: false, note: DRUM_MIDI[hit.type], velocity: 0, channel: 9 });
   });
 
+  (tab || []).forEach(ev => {
+    const startTick = Math.round(ev.startBeat * PPQ);
+    const endTick = startTick + Math.round(ev.duration * PPQ * 0.9);
+    events.push({ tick: startTick, on: true, note: ev.midi, velocity: 92, channel: 3 });
+    events.push({ tick: endTick, on: false, note: ev.midi, velocity: 0, channel: 3 });
+  });
+
   events.sort((a, b) => a.tick - b.tick || (a.on ? 1 : -1)); // note-offs before note-ons at the same tick
 
   const track = [];
@@ -1532,6 +1691,7 @@ function buildMidiFile(progression, melody, bass, drums, bpm) {
   track.push(...midiVarLen(0), 0xc0 | 0, GM_PROGRAM.chords);
   if (melody && melody.length) track.push(...midiVarLen(0), 0xc0 | 1, GM_PROGRAM.melody);
   if (bass && bass.length) track.push(...midiVarLen(0), 0xc0 | 2, GM_PROGRAM.bass);
+  if (tab && tab.length) track.push(...midiVarLen(0), 0xc0 | 3, tabStyle === 'electric' ? GM_PROGRAM.tabElectric : GM_PROGRAM.tabAcoustic);
 
   let lastTick = 0;
   events.forEach(e => {
@@ -1550,8 +1710,8 @@ function buildMidiFile(progression, melody, bass, drums, bpm) {
 }
 
 function downloadMelodyMidi() {
-  if (!state.progression || (!state.melody && !state.bass && !state.drums)) return;
-  const bytes = buildMidiFile(state.progression, state.melody, state.bass, state.drums, getBpm());
+  if (!state.progression || (!state.melody && !state.bass && !state.drums && !state.tab)) return;
+  const bytes = buildMidiFile(state.progression, state.melody, state.bass, state.drums, state.tab, state.style, getBpm());
   const blob = new Blob([bytes], { type: 'audio/midi' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1579,10 +1739,11 @@ const state = {
   progressionLabel: '',
   selectedChordIndex: null,
   showScale: true,
-  activePlayer: null, // null | 'progression' | 'melody' | 'bass' | 'drums' | 'all'
+  activePlayer: null, // null | 'progression' | 'melody' | 'bass' | 'drums' | 'tab' | 'all'
   melody: null,       // array of {startBeat, duration, midi} once generated
   bass: null,         // same shape, once generated
   drums: null,        // array of {startBeat, type} once generated
+  tab: null,          // array of {startBeat, duration, string, fret, midi} once generated — tied to capo/style
 };
 
 function populateSelects() {
@@ -1661,6 +1822,7 @@ function setProgression(chords, label) {
   state.melody = null;
   state.bass = null;
   state.drums = null;
+  state.tab = null;
   renderChordCards();
   updateActiveProgItem();
   renderPiano();
@@ -1798,6 +1960,7 @@ function wireEvents() {
   });
   document.getElementById('capoSelect').addEventListener('change', e => {
     state.capo = parseInt(e.target.value, 10);
+    if (state.tab) removeLayer('tab'); // fret positions are capo-relative, now stale
     renderChordCards();
     renderFretboardScale();
   });
@@ -1848,12 +2011,15 @@ function wireEvents() {
   document.getElementById('genMelodyBtn').addEventListener('click', regenerateMelody);
   document.getElementById('genBassBtn').addEventListener('click', regenerateBass);
   document.getElementById('genDrumsBtn').addEventListener('click', regenerateDrums);
+  document.getElementById('genTabBtn').addEventListener('click', regenerateTab);
   document.getElementById('removeMelodyBtn').addEventListener('click', () => removeLayer('melody'));
   document.getElementById('removeBassBtn').addEventListener('click', () => removeLayer('bass'));
   document.getElementById('removeDrumsBtn').addEventListener('click', () => removeLayer('drums'));
+  document.getElementById('removeTabBtn').addEventListener('click', () => removeLayer('tab'));
   document.getElementById('melodyPlayBtn').addEventListener('click', () => togglePlayer('melody'));
   document.getElementById('bassPlayBtn').addEventListener('click', () => togglePlayer('bass'));
   document.getElementById('drumsPlayBtn').addEventListener('click', () => togglePlayer('drums'));
+  document.getElementById('tabPlayBtn').addEventListener('click', () => togglePlayer('tab'));
   document.getElementById('playAllBtn').addEventListener('click', () => togglePlayer('all'));
   document.getElementById('downloadMidiBtn').addEventListener('click', downloadMelodyMidi);
   document.getElementById('randomBtn').addEventListener('click', () => {

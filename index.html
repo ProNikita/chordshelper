@@ -150,8 +150,8 @@
 
       <section class="panel">
         <div class="panel-header">
-          <h2 data-i18n="melodyTitle">Melody, bass &amp; drums generator</h2>
-          <span class="prog-label" data-i18n="melodySub">ideas to sing or play over this progression</span>
+          <h2 data-i18n="melodyTitle">Arrangement generator</h2>
+          <span class="prog-label" data-i18n="melodySub">melody, bass, drums &amp; guitar tab for this progression</span>
         </div>
         <div class="play-bar melody-bar">
           <span class="gen-group">
@@ -166,11 +166,16 @@
             <button id="genDrumsBtn" class="btn primary" data-i18n="generateDrums">🥁 Generate drums</button>
             <button id="removeDrumsBtn" class="btn small remove-btn" disabled>✕</button>
           </span>
+          <span class="gen-group">
+            <button id="genTabBtn" class="btn primary" data-i18n="generateTab">🎼 Generate tab</button>
+            <button id="removeTabBtn" class="btn small remove-btn" disabled>✕</button>
+          </span>
         </div>
         <div class="play-bar melody-bar">
           <button id="melodyPlayBtn" class="btn play-btn" data-i18n="playMelody" disabled>▶ Play melody</button>
           <button id="bassPlayBtn" class="btn play-btn" data-i18n="playBass" disabled>▶ Play bass</button>
           <button id="drumsPlayBtn" class="btn play-btn" data-i18n="playDrums" disabled>▶ Play drums</button>
+          <button id="tabPlayBtn" class="btn play-btn" data-i18n="playTab" disabled>▶ Play tab</button>
           <button id="playAllBtn" class="btn play-btn" data-i18n="playAll" disabled>▶ Play all</button>
           <button id="downloadMidiBtn" class="btn" data-i18n="downloadMidi" disabled>⬇ Download MIDI</button>
         </div>
@@ -181,6 +186,7 @@
         </div>
         <div id="melodyContainer" class="melody-container"></div>
         <div id="drumsContainer" class="melody-container"></div>
+        <div id="tabContainer" class="melody-container"></div>
       </section>
 
     </main>
