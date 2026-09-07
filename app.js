@@ -75,6 +75,10 @@ const STRINGS = {
     sub_min_vii: 'leading tone (harmonic minor) — sharper before i',
     sub_min_I: 'Picardy third — bright major ending',
     secondaryDom: name => `secondary dominant — pulls into the next chord, ${name}`,
+    colorTriadTag: 'triad',
+    colorTriadLabel: 'plain triad — simpler, more universal',
+    colorExtLabel: 'diatonic 7th — extra color, same function',
+    colorSus4Label: 'sus4 — suspended tension that wants to resolve',
   },
   ru: {
     subtitle: 'помощник в написании мелодий и песен',
@@ -147,6 +151,10 @@ const STRINGS = {
     sub_min_vii: 'вводный тон (гарм. минор) — острее перед i',
     sub_min_I: 'пикардийская терция — светлый мажорный исход',
     secondaryDom: name => `вторичная доминанта — тянет в следующий ${name}`,
+    colorTriadTag: 'триада',
+    colorTriadLabel: 'простое трезвучие — проще и универсальнее',
+    colorExtLabel: 'диатонический септаккорд — больше окраски, та же функция',
+    colorSus4Label: 'sus4 — подвешенное напряжение, тянет к разрешению',
   },
 };
 
@@ -295,8 +303,7 @@ function qualitySuffix(q) {
 
 function diatonicChord(keyRoot, mode, degreeIndex, keyMap) {
   const scale = SCALE_INTERVALS[mode];
-  const qualityTable = state.richChords ? DEGREE_QUALITY_EXT : DEGREE_QUALITY;
-  const quality = qualityTable[mode][degreeIndex];
+  const quality = DEGREE_QUALITY[mode][degreeIndex];
   const root = (keyRoot + scale[degreeIndex]) % 12;
   const map = keyMap || buildKeyNoteMap(keyRoot, mode);
   return {
@@ -306,6 +313,28 @@ function diatonicChord(keyRoot, mode, degreeIndex, keyMap) {
     roman: ROMAN[mode][degreeIndex],
     degreeIndex,
   };
+}
+
+// Re-quality a chord to its diatonic 7th form (used both for the light
+// automatic sprinkle below and for the manual "color" substitution chips).
+function extendedVariant(chord, mode, keyMap) {
+  const quality = DEGREE_QUALITY_EXT[mode][chord.degreeIndex];
+  const name = (keyMap.get(chord.root) || noteName(chord.root)) + qualitySuffix(quality);
+  return { ...chord, quality, name };
+}
+
+// Sprinkle 7th/color chords into an otherwise plain-triad progression instead
+// of forcing every chord — real songs mostly stay triads and reach for a 7th
+// at a specific spot (the V leading into a resolution, a jazzy final tonic).
+function applyRichColoring(chords, mode, keyMap) {
+  if (!state.richChords) return chords;
+  return chords.map((c, i) => {
+    const isLast = i === chords.length - 1;
+    let colorChance = 0.16; // occasional color anywhere
+    if (c.degreeIndex === 4) colorChance = 0.65;               // V -> V7 is the classic move
+    else if (isLast && c.degreeIndex === 0) colorChance = 0.35; // jazzy tonic ending
+    return Math.random() < colorChance ? extendedVariant(c, mode, keyMap) : c;
+  });
 }
 
 // ---------- Chord substitutions ----------
@@ -346,6 +375,28 @@ function secondaryDominantSubstitute(nextChord) {
   return { root, quality: 'maj', name: noteName(root), kind: 'secondary', tag: `V/${nextChord.name}`, label: t('secondaryDom', nextChord.name) };
 }
 
+// Manual "color" chips: switch this one chord between a plain triad, its
+// diatonic 7th, and a sus4 — independent of whatever the automatic sprinkle
+// in applyRichColoring() landed on for this slot. Only offered when the
+// "7th & sus" toggle is on.
+function colorSubstitutes(base, mode, keyMap) {
+  const list = [];
+  const plainQuality = DEGREE_QUALITY[mode][base.degreeIndex];
+  const richQuality = DEGREE_QUALITY_EXT[mode][base.degreeIndex];
+  const nameFor = q => (keyMap.get(base.root) || noteName(base.root)) + qualitySuffix(q);
+
+  if (base.quality !== plainQuality) {
+    list.push({ root: base.root, quality: plainQuality, name: nameFor(plainQuality), kind: 'color', tag: t('colorTriadTag'), label: t('colorTriadLabel') });
+  }
+  if (base.quality !== richQuality) {
+    list.push({ root: base.root, quality: richQuality, name: nameFor(richQuality), kind: 'color', tag: qualitySuffix(richQuality), label: t('colorExtLabel') });
+  }
+  if (base.quality !== 'sus4') {
+    list.push({ root: base.root, quality: 'sus4', name: nameFor('sus4'), kind: 'color', tag: 'sus4', label: t('colorSus4Label') });
+  }
+  return list;
+}
+
 // Suggestions are always derived from the slot's original diatonic chord, so
 // they stay stable no matter what is currently substituted in.
 function generateSubstitutes(progression, idx, keyRoot, mode, keyMap) {
@@ -358,6 +409,7 @@ function generateSubstitutes(progression, idx, keyRoot, mode, keyMap) {
   const nextChord = progression[idx + 1];
   const secDom = secondaryDominantSubstitute(nextChord);
   if (secDom) list.push(secDom);
+  if (state.richChords) colorSubstitutes(base, mode, keyMap).forEach(c => list.push(c));
   // drop any suggestion identical to the base chord or a duplicate root+quality
   const seen = new Set([`${base.root}-${base.quality}`]);
   return list.filter(c => {
@@ -407,7 +459,8 @@ function progressionsForMode(mode, mood) {
 
 function progressionToChords(keyRoot, mode, degreeSeq) {
   const keyMap = buildKeyNoteMap(keyRoot, mode);
-  return degreeSeq.map(d => diatonicChord(keyRoot, mode, d, keyMap));
+  const chords = degreeSeq.map(d => diatonicChord(keyRoot, mode, d, keyMap));
+  return applyRichColoring(chords, mode, keyMap);
 }
 
 function randomProgression(keyRoot, mode, mood) {
