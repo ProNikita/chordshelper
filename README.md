@@ -23,3 +23,7 @@ Open `http://localhost:5183` in your browser.
 ## Stack
 
 Plain HTML/CSS/JavaScript, no dependencies, no build step.
+
+## License
+
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free to use, modify, and share for any noncommercial purpose (personal projects, learning, research, nonprofits, etc.). Commercial use, including selling the software or a product built on it, is not permitted without a separate license from the author.
