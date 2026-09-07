@@ -26,11 +26,14 @@ const STRINGS = {
     chordSubstitutionsSub: "so the progression doesn't sound monotonous",
     pianoTitle: 'Piano',
     showScale: 'Show scale',
-    fretboardTitle: 'Scale on the guitar fretboard',
+    fretboardTitle: 'Melody notes on the guitar fretboard',
     footer: "Click a chord below to see its notes on the keyboard. Capo only changes the shape you finger on guitar — the actual sounding key and the piano keyboard don't change.",
     play: '▶ Play',
     stop: '■ Stop',
     bpmLabel: 'Tempo',
+    legendRoot: 'Root',
+    legendChord: 'Chord tone',
+    legendScale: 'Safe note',
     noCapo: 'No capo',
     fretN: n => `Fret ${n}`,
     capoWord: 'capo',
@@ -51,9 +54,11 @@ const STRINGS = {
     revertTo: name => `↺ revert to ${name}`,
     notesLabel: list => `Notes: ${list}`,
     pianoScaleInfo: (root, mode, notes) => `Scale: ${root} ${mode} — ${notes}`,
-    pianoChordInfo: (name, notes) => `Chord: ${name} — notes ${notes}`,
+    pianoChordInfo: (name, notes, safe) => `Chord: ${name} — chord tones ${notes} · also safe: ${safe}`,
     fretboardCapoInfo: (root, mode, capo) => `${root} ${mode} — actual sounding notes; the dimmed zone before the capo (fret ${capo}) is unplayable`,
     fretboardInfo: (root, mode) => `${root} ${mode} across the whole neck`,
+    fretboardChordInfo: name => `Melody notes over ${name} — chord tones + other safe scale notes`,
+    fretboardChordCapoInfo: (name, capo) => `Melody notes over ${name} — dimmed zone before the capo (fret ${capo}) is unplayable`,
     relativeLabel: roman => `${roman} · relative substitute (shared tones)`,
     sub_maj_iv: 'borrowed from the parallel minor — sadder',
     sub_maj_bVII: 'bVII — rock/pop cadence instead of V',
@@ -86,11 +91,14 @@ const STRINGS = {
     chordSubstitutionsSub: 'чтобы прогрессия не звучала однообразно',
     pianoTitle: 'Пианино',
     showScale: 'Показать гамму',
-    fretboardTitle: 'Гамма на грифе гитары',
+    fretboardTitle: 'Ноты мелодии на грифе гитары',
     footer: 'Кликните на аккорд ниже, чтобы увидеть его ноты на клавиатуре. Капо меняет только форму (аппликатуру) для гитары — реальная звучащая тональность и клавиатура пианино не меняются.',
     play: '▶ Играть',
     stop: '■ Стоп',
     bpmLabel: 'Темп',
+    legendRoot: 'Тоника',
+    legendChord: 'Тон аккорда',
+    legendScale: 'Безопасная нота',
     noCapo: 'Без капо',
     fretN: n => `${n} лад`,
     capoWord: 'капо',
@@ -111,9 +119,11 @@ const STRINGS = {
     revertTo: name => `↺ вернуть ${name}`,
     notesLabel: list => `Ноты: ${list}`,
     pianoScaleInfo: (root, mode, notes) => `Гамма: ${root} ${mode} — ${notes}`,
-    pianoChordInfo: (name, notes) => `Аккорд: ${name} — ноты ${notes}`,
+    pianoChordInfo: (name, notes, safe) => `Аккорд: ${name} — тона аккорда ${notes} · также безопасны: ${safe}`,
     fretboardCapoInfo: (root, mode, capo) => `${root} ${mode} — реальные ноты на грифе; затемнённая зона до капо (${capo} лад) недоступна`,
     fretboardInfo: (root, mode) => `${root} ${mode} по всему грифу`,
+    fretboardChordInfo: name => `Ноты мелодии над ${name} — тона аккорда + другие безопасные ноты гаммы`,
+    fretboardChordCapoInfo: (name, capo) => `Ноты мелодии над ${name} — затемнённая зона до капо (${capo} лад) недоступна`,
     relativeLabel: roman => `${roman} · родственная замена (общие ноты)`,
     sub_maj_iv: 'заимствован из параллельного минора — печальнее',
     sub_maj_bVII: 'bVII — рок/поп каденция вместо V',
@@ -534,9 +544,10 @@ const WHITE_PC = [0,2,4,5,7,9,11];
 const BLACK_PC = new Set([1,3,6,8,10]);
 
 function renderPianoSVG(highlightSet, rootPc, nameMap, opts) {
-  // highlightSet: Set of pitch classes to highlight, rootPc: pitch class treated as root (distinct color)
+  // highlightSet: Set of pitch classes highlighted as "chord tone" (root gets its own color)
+  // opts.extraSet: Set of additional pitch classes highlighted as "safe scale tone" (a third, dimmer tier)
   // nameMap: pitch -> correctly-spelled note name for the current key (falls back to noteName())
-  const o = Object.assign({ octaves: 2, whiteW: 34, whiteH: 130, blackW: 20, blackH: 82, showAllLabels: true }, opts);
+  const o = Object.assign({ octaves: 2, whiteW: 34, whiteH: 130, blackW: 20, blackH: 82, showAllLabels: true, extraSet: null }, opts);
   const label = pc => (nameMap && nameMap.get(pc)) || noteName(pc);
   const startOctaveSemitone = 0; // start at C
   const totalSemitones = o.octaves * 12 + 1; // N octaves inclusive (C..C)
@@ -556,27 +567,31 @@ function renderPianoSVG(highlightSet, rootPc, nameMap, opts) {
     }
   }
 
+  const tierOf = pc => {
+    if (highlightSet.has(pc)) return pc === rootPc ? 'root' : 'chord';
+    if (o.extraSet && o.extraSet.has(pc)) return 'scale';
+    return 'none';
+  };
+
   const totalWidth = whiteIndex * o.whiteW;
   let svg = `<svg viewBox="0 0 ${totalWidth} ${o.whiteH + 4}" width="${totalWidth}" height="${o.whiteH + 4}" xmlns="http://www.w3.org/2000/svg">`;
 
   whiteRects.forEach(k => {
-    const isHi = highlightSet.has(k.pc);
-    const isRoot = isHi && k.pc === rootPc;
-    const fill = isRoot ? 'var(--root-color)' : (isHi ? 'var(--accent)' : '#f4f4f6');
+    const tier = tierOf(k.pc);
+    const fill = tier === 'root' ? 'var(--root-color)' : tier === 'chord' ? 'var(--accent)' : tier === 'scale' ? 'var(--accent-2)' : '#f4f4f6';
     svg += `<rect x="${k.x}" y="0" width="${o.whiteW - 1.5}" height="${o.whiteH}" rx="3" fill="${fill}" stroke="#0002" stroke-width="1"/>`;
-    if (o.showAllLabels || isHi) {
-      const labelColor = isHi ? '#10131a' : '#556';
+    if (o.showAllLabels || tier !== 'none') {
+      const labelColor = tier !== 'none' ? '#10131a' : '#556';
       const fontSize = o.whiteW < 26 ? 8 : 10.5;
-      svg += `<text x="${k.x + (o.whiteW - 1.5) / 2}" y="${o.whiteH - 10}" font-size="${fontSize}" text-anchor="middle" fill="${labelColor}" font-weight="${isHi ? 700 : 400}">${label(k.pc)}</text>`;
+      svg += `<text x="${k.x + (o.whiteW - 1.5) / 2}" y="${o.whiteH - 10}" font-size="${fontSize}" text-anchor="middle" fill="${labelColor}" font-weight="${tier !== 'none' ? 700 : 400}">${label(k.pc)}</text>`;
     }
   });
 
   blackRects.forEach(k => {
-    const isHi = highlightSet.has(k.pc);
-    const isRoot = isHi && k.pc === rootPc;
-    const fill = isRoot ? 'var(--root-color)' : (isHi ? 'var(--accent-2)' : '#1a1c22');
+    const tier = tierOf(k.pc);
+    const fill = tier === 'root' ? 'var(--root-color)' : tier === 'chord' ? 'var(--accent)' : tier === 'scale' ? 'var(--accent-2)' : '#1a1c22';
     svg += `<rect x="${k.x}" y="0" width="${o.blackW}" height="${o.blackH}" rx="2" fill="${fill}" stroke="#0004" stroke-width="1"/>`;
-    if (isHi) {
+    if (tier !== 'none') {
       const fontSize = o.blackW < 16 ? 7 : 8.5;
       svg += `<text x="${k.x + o.blackW / 2}" y="${o.blackH - 8}" font-size="${fontSize}" text-anchor="middle" fill="#10131a" font-weight="700">${label(k.pc)}</text>`;
     }
@@ -593,7 +608,7 @@ const STRING_OPEN_PC = [4, 9, 2, 7, 11, 4];
 const FRET_MARKERS = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
 const DOUBLE_FRET_MARKERS = new Set([12, 24]);
 
-function renderFretboardSVG(rootPc, keySet, keyMap, capoFret) {
+function renderFretboardSVG(rootPc, keySet, keyMap, capoFret, extraSet) {
   const numFrets = 15;
   const left = 26, top = 18, right = 16, bottom = 26;
   const fretGap = 42;
@@ -654,13 +669,16 @@ function renderFretboardSVG(rootPc, keySet, keyMap, capoFret) {
     const y = top + i * stringGap;
     for (let f = 0; f <= numFrets; f++) {
       const pc = (openPc + f) % 12;
-      if (!keySet.has(pc)) continue;
+      const isChord = keySet.has(pc);
+      const isExtra = !isChord && extraSet && extraSet.has(pc);
+      if (!isChord && !isExtra) continue;
       const x = left + (f === 0 ? 0 : (f - 0.5) * fretGap);
-      const isRoot = pc === rootPc;
-      const fill = isRoot ? 'var(--root-color)' : 'var(--accent)';
-      const r = f === 0 ? 8 : 9;
-      svg += `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="var(--bg)" stroke-width="1.5"/>`;
-      svg += `<text x="${x}" y="${y + 3.5}" font-size="9" text-anchor="middle" fill="#10131a" font-weight="700">${keyMap.get(pc) || noteName(pc)}</text>`;
+      const isRoot = isChord && pc === rootPc;
+      const fill = isRoot ? 'var(--root-color)' : isChord ? 'var(--accent)' : 'var(--accent-2)';
+      const r = isExtra ? (f === 0 ? 6.5 : 7.5) : (f === 0 ? 8 : 9);
+      const opacity = isExtra ? '0.9' : '1';
+      svg += `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" opacity="${opacity}" stroke="var(--bg)" stroke-width="1.5"/>`;
+      svg += `<text x="${x}" y="${y + 3.5}" font-size="${isExtra ? 8 : 9}" text-anchor="middle" fill="#10131a" font-weight="700">${keyMap.get(pc) || noteName(pc)}</text>`;
     }
   });
 
@@ -672,13 +690,23 @@ function renderFretboardScale() {
   const container = document.getElementById('fretboardContainer');
   const info = document.getElementById('fretboardInfo');
   const keyMap = buildKeyNoteMap(state.root, state.mode);
-  const keySet = new Set(keyMap.keys());
+  const scaleSet = new Set(keyMap.keys());
   const spell = pc => keyMap.get(pc) || noteName(pc);
 
-  container.innerHTML = renderFretboardSVG(state.root, keySet, keyMap, state.capo);
-  info.textContent = state.capo > 0
-    ? t('fretboardCapoInfo', spell(state.root), modeWord(state.mode), state.capo)
-    : t('fretboardInfo', spell(state.root), modeWord(state.mode));
+  if ((state.showScale || state.selectedChordIndex === null) || !state.progression) {
+    container.innerHTML = renderFretboardSVG(state.root, scaleSet, keyMap, state.capo);
+    info.textContent = state.capo > 0
+      ? t('fretboardCapoInfo', spell(state.root), modeWord(state.mode), state.capo)
+      : t('fretboardInfo', spell(state.root), modeWord(state.mode));
+  } else {
+    const chord = state.progression[state.selectedChordIndex];
+    const chordSet = new Set(CHORD_INTERVALS[chord.quality].map(iv => (chord.root + iv) % 12));
+    const extraSet = new Set([...scaleSet].filter(pc => !chordSet.has(pc)));
+    container.innerHTML = renderFretboardSVG(chord.root, chordSet, keyMap, state.capo, extraSet);
+    info.textContent = state.capo > 0
+      ? t('fretboardChordCapoInfo', chord.name, state.capo)
+      : t('fretboardChordInfo', chord.name);
+  }
 }
 
 function renderSubstitutions() {
@@ -1037,6 +1065,7 @@ function renderChordCards() {
       document.getElementById('showScaleBtn').classList.remove('active');
       renderChordCards();
       renderPiano();
+      renderFretboardScale();
     });
     container.appendChild(card);
   });
@@ -1048,6 +1077,7 @@ function renderPiano() {
   const keyMap = buildKeyNoteMap(state.root, state.mode);
   const spell = pc => keyMap.get(pc) || noteName(pc);
   let highlightSet = new Set();
+  let extraSet = null;
   let rootPc = state.root;
 
   if (state.showScale || state.selectedChordIndex === null) {
@@ -1060,10 +1090,12 @@ function renderPiano() {
     const notes = CHORD_INTERVALS[chord.quality].map(iv => (chord.root + iv) % 12);
     highlightSet = new Set(notes);
     rootPc = chord.root;
-    info.textContent = t('pianoChordInfo', chord.name, notes.map(spell).join(', '));
+    const scaleNotes = SCALE_INTERVALS[state.mode].map(iv => (state.root + iv) % 12);
+    extraSet = new Set(scaleNotes.filter(pc => !highlightSet.has(pc)));
+    info.textContent = t('pianoChordInfo', chord.name, notes.map(spell).join(', '), [...extraSet].map(spell).join(', '));
   }
 
-  container.innerHTML = renderPianoSVG(highlightSet, rootPc, keyMap);
+  container.innerHTML = renderPianoSVG(highlightSet, rootPc, keyMap, { extraSet });
 }
 
 function refreshAll() {
@@ -1155,6 +1187,7 @@ function wireEvents() {
     document.getElementById('showScaleBtn').classList.add('active');
     renderChordCards();
     renderPiano();
+    renderFretboardScale();
   });
 }
 

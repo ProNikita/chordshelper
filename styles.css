@@ -357,7 +357,31 @@ select {
 .piano-info {
   color: var(--text-dim);
   font-size: 13px;
+  margin: 0 0 10px;
 }
+
+.tier-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.tier-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.tier-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.tier-dot.root { background: var(--root-color); }
+.tier-dot.chord { background: var(--accent); }
+.tier-dot.scale { background: var(--accent-2); }
 
 .fretboard-container {
   overflow-x: auto;

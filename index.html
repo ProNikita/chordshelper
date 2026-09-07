@@ -112,17 +112,27 @@
           <div class="piano-toggle">
             <button id="showScaleBtn" class="btn small active" data-i18n="showScale">Show scale</button>
             <button id="pianoPlayBtn" class="btn small" data-i18n="play">▶ Play</button>
-            <span id="pianoInfo" class="piano-info"></span>
           </div>
         </div>
+        <div class="tier-legend">
+          <span class="tier-item"><span class="tier-dot root"></span><span data-i18n="legendRoot">Root</span></span>
+          <span class="tier-item"><span class="tier-dot chord"></span><span data-i18n="legendChord">Chord tone</span></span>
+          <span class="tier-item"><span class="tier-dot scale"></span><span data-i18n="legendScale">Safe note</span></span>
+        </div>
+        <p id="pianoInfo" class="piano-info"></p>
         <div id="pianoContainer" class="piano-container"></div>
       </section>
 
       <section class="panel">
         <div class="panel-header">
           <h2 data-i18n="fretboardTitle">Scale on the guitar fretboard</h2>
-          <span id="fretboardInfo" class="piano-info"></span>
         </div>
+        <div class="tier-legend">
+          <span class="tier-item"><span class="tier-dot root"></span><span data-i18n="legendRoot">Root</span></span>
+          <span class="tier-item"><span class="tier-dot chord"></span><span data-i18n="legendChord">Chord tone</span></span>
+          <span class="tier-item"><span class="tier-dot scale"></span><span data-i18n="legendScale">Safe note</span></span>
+        </div>
+        <p id="fretboardInfo" class="piano-info"></p>
         <div id="fretboardContainer" class="fretboard-container"></div>
       </section>
 
